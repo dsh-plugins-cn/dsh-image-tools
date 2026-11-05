@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-image-tools · 交互流程</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff}
+  body{width:1440px;height:900px;overflow:hidden}
+  svg{display:block}
+  text{font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif}
+  .t1{font-size:13px;font-weight:600;fill:#0f1115}
+  .t2{font-size:11.5px;fill:#61666b}
+  .t3{font-size:11px;fill:#81858c;letter-spacing:.3px}
+  .num{font-size:12px;font-weight:700;fill:#4176e6}
+  .hd{font-size:22px;font-weight:700;fill:#0f1115;letter-spacing:-.2px}
+  .sub{font-size:12.5px;fill:#81858c}
+  .nd{fill:#fff;stroke:rgba(0,0,0,.12);stroke-width:1}
+  .acc{fill:#edf3fe;stroke:#b7c8fe;stroke-width:1}
+  .tint{fill:#f7f8fa;stroke:#b9bfc8;stroke-width:1;stroke-dasharray:5 4}
+  .ln{stroke:#b6bcc6;stroke-width:1.4;fill:none}
+  .dot{fill:#4176e6}
+</style>
+</head>
+<body>
+<svg width="1440" height="900" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0f1115" flood-opacity="0.06"/>
+    </filter>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1.6 L8.2 5 L1 8.4 z" fill="#b6bcc6"/>
+    </marker>
+  </defs>
+
+  <text class="hd" x="64" y="58">dsh-image-tools · 交互流程</text>
+  <text class="sub" x="64" y="84">接管图片槽位渲染缩略图，用 shell.overlay 承载预览层与右键菜单；复制与下载共用一套动作。</text>
+
+  <!-- 顶部四步 -->
+  <g filter="url(#sh)">
+    <rect class="nd" x="64"  y="120" width="300" height="92" rx="12"/>
+    <rect class="nd" x="404" y="120" width="300" height="92" rx="12"/>
+    <rect class="nd" x="744" y="120" width="300" height="92" rx="12"/>
+    <rect class="nd" x="1084" y="120" width="292" height="92" rx="12"/>
+  </g>
+  <text class="num" x="84" y="146">①</text>
+  <text class="t1" x="104" y="147">接管图片槽位</text>
+  <text class="t2" x="84" y="172">消息 / 工具 / 轨迹里的图片由本插件渲染</text>
+  <text class="t2" x="84" y="192">官方 priority 100 → 本插件 priority 10</text>
+
+  <text class="num" x="424" y="146">②</text>
+  <text class="t1" x="444" y="147">两个入口</text>
+  <text class="t2" x="424" y="172">右键缩略图 → 位置菜单</text>
+  <text class="t2" x="424" y="192">点击缩略图 → 全屏预览（工具条）</text>
+
+  <text class="num" x="764" y="146">③</text>
+  <text class="t1" x="784" y="147">取原图</text>
+  <text class="t2" x="764" y="172">props.loadImage(attachment) → blob URL</text>
+  <text class="t2" x="764" y="192">原图全分辨率字节，不是缩略图</text>
+
+  <text class="num" x="1104" y="146">④</text>
+  <text class="t1" x="1124" y="147">执行动作</text>
+  <text class="t2" x="1104" y="172">复制图片 / 下载原图</text>
+  <text class="t2" x="1104" y="192">键盘：Enter · Ctrl+C · Esc</text>
+
+  <path class="ln" d="M364 166 H404" marker-end="url(#ar)"/>
+  <path class="ln" d="M704 166 H744" marker-end="url(#ar)"/>
+  <path class="ln" d="M1044 166 H1084" marker-end="url(#ar)"/>
+
+  <!-- 分叉 -->
+  <path class="ln" d="M1230 212 V246"/>
+  <path class="ln" d="M384 246 H1230"/>
+  <path class="ln" d="M384 246 V288" marker-end="url(#ar)"/>
+  <path class="ln" d="M1056 246 V288" marker-end="url(#ar)"/>
+  <circle class="dot" cx="384" cy="246" r="3"/>
+  <circle class="dot" cx="1056" cy="246" r="3"/>
+  <circle class="dot" cx="1230" cy="246" r="3"/>
+
+  <!-- 复制管线 -->
+  <text class="t3" x="64" y="306">复制管线</text>
+  <g filter="url(#sh)">
+    <rect class="nd" x="64" y="318" width="640" height="84" rx="12"/>
+    <rect class="nd" x="64" y="434" width="640" height="84" rx="12"/>
+    <rect class="acc" x="64" y="550" width="640" height="84" rx="12"/>
+  </g>
+  <text class="t1" x="86" y="347">转码 PNG</text>
+  <text class="t2" x="86" y="370">原图多为 JPEG / WebP；Chromium 剪贴板只接受 image/png</text>
+  <text class="t2" x="86" y="388">canvas.drawImage → toBlob('image/png')</text>
+
+  <text class="t1" x="86" y="463">写剪贴板</text>
+  <text class="t2" x="86" y="486">navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])</text>
+  <text class="t2" x="86" y="504">dsh-app:// 为 secure scheme，非 media 权限默认放行</text>
+
+  <text class="t1" x="86" y="579">✓ 已复制图片到剪贴板</text>
+  <text class="t2" x="86" y="602">toast 1.8s 自动消失；失败时回落「改用下载」</text>
+  <text class="t2" x="86" y="620">菜单行显示「复制中…」忙碌态，防重复点击</text>
+
+  <path class="ln" d="M384 402 V434" marker-end="url(#ar)"/>
+  <path class="ln" d="M384 518 V550" marker-end="url(#ar)"/>
+
+  <!-- 下载管线 -->
+  <text class="t3" x="736" y="306">下载管线</text>
+  <g filter="url(#sh)">
+    <rect class="nd" x="736" y="318" width="640" height="84" rx="12"/>
+    <rect class="nd" x="736" y="434" width="640" height="84" rx="12"/>
+    <rect class="acc" x="736" y="550" width="640" height="84" rx="12"/>
+  </g>
+  <text class="t1" x="758" y="347">推断文件名</text>
+  <text class="t2" x="758" y="370">优先 img.alt 里的真实文件名，否则 dsh-image-20261105-152801.png</text>
+  <text class="t2" x="758" y="388">扩展名按 Blob MIME 决定：jpeg → .jpg，webp → .webp</text>
+
+  <text class="t1" x="758" y="463">触发浏览器下载</text>
+  <text class="t2" x="758" y="486">URL.createObjectURL(blob) + &lt;a download&gt;.click()</text>
+  <text class="t2" x="758" y="504">与官方「下载 Session 日志」同一条链路，60s 后 revoke</text>
+
+  <text class="t1" x="758" y="579">✓ 系统「另存为」对话框</text>
+  <text class="t2" x="758" y="602">Electron 默认行为；用户可改目录与文件名</text>
+  <text class="t2" x="758" y="620">下载不经过插件 host 半，无落盘逻辑</text>
+
+  <path class="ln" d="M1056 402 V434" marker-end="url(#ar)"/>
+  <path class="ln" d="M1056 518 V550" marker-end="url(#ar)"/>
+
+  <!-- 兜底 -->
+  <g filter="url(#sh)"><rect class="tint" x="64" y="676" width="1312" height="86" rx="12"/></g>
+  <text class="t1" x="86" y="705">兜底与边界</text>
+  <text class="t2" x="86" y="728">ClipboardItem 不存在 / 写剪贴板被拒 → toast「当前环境不支持复制，改用下载」；canvas 尺寸超限（超大图）→ 跳过复制只保留下载。</text>
+  <text class="t2" x="86" y="748">blob URL 已失效（图片被回收）→ 重新 loadImage 一次再取字节；下载失败（Electron 取消对话框）→ 静默，不弹错误。</text>
+
+  <!-- 脚注 -->
+  <text class="t3" x="64" y="812">注册点</text>
+  <text class="t2" x="118" y="812">conversation.chat.user.images · conversation.chat.message.images · tool.call.images · conversation.trajectory.images</text>
+  <text class="t3" x="64" y="840">弹层</text>
+  <text class="t2" x="118" y="840">shell.overlay（list · root，z-index 20）：预览遮罩、工具条与右键菜单；Esc / 点遮罩关闭，焦点归还缩略图</text>
+  <text class="t3" x="64" y="868">卸载</text>
+  <text class="t2" x="118" y="868">槽位条目与 overlay 条目随 ctx dispose 移除；无 document.body 追加、无 document 级监听</text>
+</svg>
+</body>
+</html>
+

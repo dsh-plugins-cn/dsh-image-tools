@@ -1,0 +1,65 @@
+{
+  "name": "dsh-image-tools",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Copy or download any image shown in a DeepSeek Harness conversation, including pasted screenshots, without losing the original bytes.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "image",
+    "screenshot",
+    "clipboard",
+    "download"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node scripts/check-manifest.mjs",
+    "test": "node --test",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-trajectory",
+        "@deepseek-ai/dsh-client-ui-attachment"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dsh-plugins-cn/dsh-image-tools.git"
+  },
+  "homepage": "https://github.com/dsh-plugins-cn/dsh-image-tools#readme",
+  "bugs": {
+    "url": "https://github.com/dsh-plugins-cn/dsh-image-tools/issues"
+  }
+}

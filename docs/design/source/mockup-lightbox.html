@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-image-tools · 预览层工具条效果图</title>
+<style>
+  :root{
+    --bg:#f9fafb; --text:#0f1115; --text2:#61666b; --text3:#81858c;
+    --line:rgba(0,0,0,.08); --line2:rgba(0,0,0,.12); --hover:rgba(38,49,72,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{width:1440px;height:900px;overflow:hidden;background:#fff;color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .app{display:flex;width:1440px;height:900px;filter:blur(4px) saturate(.92)}
+
+  .side{width:264px;flex:none;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 12px 12px}
+  .brand{display:flex;align-items:center;gap:9px;padding:4px 6px 14px}
+  .mark{width:26px;height:26px;border-radius:8px;background:#0f1115;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700}
+  .brand b{font-size:13px;font-weight:600}
+  .newchat{display:flex;align-items:center;gap:8px;height:34px;border-radius:10px;border:1px solid var(--line2);background:#fff;padding:0 10px;font-size:13px;margin-bottom:14px}
+  .sect{font-size:11px;color:var(--text3);padding:2px 6px 8px}
+  .s{height:32px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:8px;font-size:13px;color:var(--text2)}
+  .s .d{width:5px;height:5px;border-radius:50%;background:#c3c8d0}
+  .s.on{background:#fff;color:var(--text);box-shadow:0 0 0 .5px rgba(0,0,0,.07)}
+  .s.on .d{background:#4176e6}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .top{height:54px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 22px;font-size:13.5px;font-weight:600}
+  .chat{flex:1;padding:24px 64px 0;display:flex;flex-direction:column;gap:18px;overflow:hidden}
+  .urow{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+  .bubble{max-width:560px;background:#f2f3f5;border-radius:20px;padding:10px 15px;font-size:14px;line-height:1.55}
+  .shot{border-radius:16px;overflow:hidden;border:.5px solid var(--line2);background:#0f1115}
+  .shot.thumb{width:320px;height:205px}
+  .bar{height:24px;display:flex;align-items:center;gap:5px;padding:0 9px;background:#1b1d22;border-bottom:1px solid rgba(255,255,255,.06)}
+  .dot{width:6px;height:6px;border-radius:50%}
+  .r{background:#ff5f57}.y{background:#febc2e}.g{background:#28c840}
+  .name{margin-left:6px;font-size:8.5px;color:#9aa1ab;font-family:Consolas,monospace}
+  .body{padding:8px 11px;font-family:Consolas,"Cascadia Mono",monospace;font-size:8.4px;line-height:1.86;color:#c9d1d9;white-space:pre}
+  .t{color:#7d8590}.inf{color:#4d93f8}.err{color:#ff7b72}.war{color:#d29922}
+  .arow{display:flex;gap:11px;align-items:flex-start}
+  .avatar{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#5686fe,#4176e6);flex:none;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
+  .amsg{max-width:620px;font-size:14px;line-height:1.72}
+  .amsg p{margin:0 0 7px}
+  .amsg code{font-family:Consolas,monospace;font-size:12.5px;background:rgba(38,49,72,.06);border-radius:5px;padding:1px 5px}
+  .composerWrap{padding:8px 64px 18px;flex:none}
+  .composer{border:1px solid var(--line2);border-radius:18px;background:#fff;padding:12px 13px 10px}
+  .ph{font-size:13.5px;color:var(--text3);padding:1px 2px 14px}
+
+  /* ── 遮罩 ── */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:10}
+  .close{position:fixed;top:20px;right:20px;z-index:12;width:36px;height:36px;border-radius:999px;background:#fff;
+    border:.5px solid rgba(0,0,0,.10);box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;place-items:center;color:#0f1115}
+  .close svg{width:15px;height:15px}
+
+  /* ── 预览大图 ── */
+  .stage{position:fixed;inset:0;z-index:11;display:flex;align-items:center;justify-content:center;padding:60px 40px 120px}
+  .big{border-radius:16px;overflow:hidden;width:900px;background:#0f1115;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.14),0 18px 48px rgba(0,0,0,.28),0 4px 12px rgba(0,0,0,.16)}
+  .big .bar{height:30px;gap:6px;padding:0 12px}
+  .big .dot{width:7px;height:7px}
+  .big .name{font-size:10px}
+  .big .body{font-size:13.5px;line-height:1.95;padding:14px 18px}
+
+  /* ── 工具条 ── */
+  .toolbar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:12;
+    display:flex;align-items:center;gap:4px;padding:6px;border-radius:14px;background:#fff;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.10),0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08)}
+  .tbtn{display:flex;align-items:center;gap:8px;height:36px;border:0;background:transparent;border-radius:9px;
+    padding:0 12px;font-family:inherit;font-size:13px;color:#0f1115}
+  .tbtn svg{width:16px;height:16px;color:#61666b}
+  .tbtn.hover{background:rgba(38,49,72,.06)}
+  .tsep{width:1px;height:18px;background:rgba(0,0,0,.10);margin:0 6px}
+  .thint{font-size:11.5px;color:#81858c;padding:0 10px 0 6px;white-space:nowrap}
+
+  /* ── Toast ── */
+  .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:12;
+    display:flex;align-items:center;gap:9px;height:38px;padding:0 16px;border-radius:11px;background:#1b1b1c;
+    color:#f5f6f7;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.22);white-space:nowrap}
+  .toast .ok{width:16px;height:16px;border-radius:50%;background:#2ea043;display:grid;place-items:center;flex:none}
+  .toast .ok svg{width:9px;height:9px;color:#fff}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="mark">D</span><b>DeepSeek Harness</b></div>
+    <div class="newchat">＋ 新对话</div>
+    <div class="sect">最近</div>
+    <div class="s"><span class="d"></span>远程部署排查</div>
+    <div class="s"><span class="d"></span>Nginx 配置梳理</div>
+    <div class="s"><span class="d"></span>把这份 Excel 转成图表</div>
+    <div class="s"><span class="d"></span>插件打包与发布</div>
+    <div class="s"><span class="d"></span>VM 时间同步问题</div>
+  </aside>
+  <main class="main">
+    <div class="top">远程部署排查</div>
+    <div class="chat">
+      <div class="urow">
+        <div class="bubble">这是部署时报错的截图，帮我看下是哪个端口被占了</div>
+        <div class="shot thumb">
+          <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="name">deploy.log — bash</span></div>
+          <div class="body"><span class="t">15:28:01</span> <span class="inf">INF</span> build  app@0.2.1
+<span class="t">15:28:02</span> <span class="inf">INF</span> resolve deps  142 modules
+<span class="t">15:28:04</span> <span class="inf">INF</span> starting deploy host 203.0.113.21
+<span class="t">15:28:04</span> <span class="err">ERR</span> listen EADDRINUSE :::54026
+<span class="t">15:28:05</span> <span class="war">WRN</span> retry 1/3 in 2s
+<span class="t">15:28:07</span> <span class="err">ERR</span> deploy failed (exit 1)</div>
+        </div>
+      </div>
+      <div class="arow">
+        <div class="avatar">D</div>
+        <div class="amsg"><p>日志最后几行是关键：<code>EADDRINUSE :::54026</code> 说明 DSH 的 Web 端口被别的进程先占了。</p></div>
+      </div>
+    </div>
+    <div class="composerWrap"><div class="composer"><div class="ph">给 DSH 发送消息，@ 引用文件…</div></div></div>
+  </main>
+</div>
+
+<div class="mask"></div>
+
+<div class="stage">
+  <div class="big">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="name">deploy.log — bash</span></div>
+    <div class="body"><span class="t">15:27:58</span> <span class="inf">INF</span> dsh deploy --host 203.0.113.21 --port 54026
+<span class="t">15:27:59</span> <span class="inf">INF</span> loading profile desktop
+<span class="t">15:28:00</span> <span class="inf">INF</span> resolve workspace  E:\workspace\demo-app
+<span class="t">15:28:01</span> <span class="inf">INF</span> build  app@0.2.1
+<span class="t">15:28:02</span> <span class="inf">INF</span> resolve deps  142 modules
+<span class="t">15:28:03</span> <span class="inf">INF</span> bundle client  attachment ui-chat ui-tool
+<span class="t">15:28:04</span> <span class="inf">INF</span> starting deploy host 203.0.113.21
+<span class="t">15:28:04</span> <span class="err">ERR</span> listen EADDRINUSE :::54026
+<span class="t">15:28:04</span> <span class="err">ERR</span>     at TCPListenWrap.handle (net.js:1191)
+<span class="t">15:28:04</span> <span class="err">ERR</span>     at listenInCluster (net.js:1139)
+<span class="t">15:28:05</span> <span class="war">WRN</span> retry 1/3 in 2s
+<span class="t">15:28:07</span> <span class="err">ERR</span> listen EADDRINUSE :::54026
+<span class="t">15:28:07</span> <span class="war">WRN</span> retry 2/3 in 2s
+<span class="t">15:28:09</span> <span class="err">ERR</span> listen EADDRINUSE :::54026
+<span class="t">15:28:09</span> <span class="err">ERR</span> deploy failed (exit 1)
+<span class="t">15:28:09</span> <span class="inf">INF</span> closing runtime  pid 18808</div>
+  </div>
+</div>
+
+<div class="close">
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+</div>
+
+<div class="toolbar">
+  <button class="tbtn hover">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.2" y="5.2" width="8.6" height="8.6" rx="2"/><path d="M10.4 5.2V3.9c0-.9-.7-1.6-1.6-1.6H3.9c-.9 0-1.6.7-1.6 1.6v4.9c0 .9.7 1.6 1.6 1.6h1.3"/></svg>
+    复制图片
+  </button>
+  <button class="tbtn">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v7.2"/><path d="M5.1 7.2 8 10.1l2.9-2.9"/><path d="M2.8 12.1v.9c0 .5.4.9.9.9h8.6c.5 0 .9-.4.9-.9v-.9"/></svg>
+    下载原图
+  </button>
+  <div class="tsep"></div>
+  <span class="thint">Esc 关闭预览</span>
+</div>
+
+<div class="toast">
+  <span class="ok"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2 4.8 8.5 9.5 3.8"/></svg></span>
+  已复制图片到剪贴板 · 2620 × 1680 PNG
+</div>
+</body>
+</html>
+

@@ -1,0 +1,5 @@
+# dsh-image-tools bundle patch. The host half is one Loader row; the browser
+# half is discovered from package.json dsh.client, so no second row is needed.
+- insert:
+    - id: image-tools
+      name: 'dsh-image-tools'

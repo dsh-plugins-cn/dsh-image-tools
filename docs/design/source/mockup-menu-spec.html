@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-image-tools · 菜单规格与状态</title>
+<style>
+  :root{
+    --bg:#f9fafb; --text:#0f1115; --text2:#61666b; --text3:#81858c;
+    --line:rgba(0,0,0,.08); --line2:rgba(0,0,0,.12); --hover:rgba(38,49,72,.06);
+    --accent:#4176e6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{width:1440px;height:900px;overflow:hidden;background:#fff;color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+    padding:34px 56px 0}
+  .badge{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:6px;
+    background:#edf3fe;color:#4176e6;font-size:11px;font-weight:600;letter-spacing:.2px}
+  h1{margin:12px 0 4px;font-size:24px;font-weight:700;letter-spacing:-.2px}
+  .sub{margin:0;font-size:12.5px;color:var(--text3)}
+
+  .row{display:flex;gap:30px;margin-top:26px}
+  .col{flex:none}
+  .cap{font-size:11px;color:var(--text3);letter-spacing:.4px;margin-bottom:9px}
+  .panel{width:360px;height:238px;border-radius:16px;display:flex;align-items:center;justify-content:center}
+  .panel.light{background:#f4f5f7;border:1px solid var(--line)}
+  .panel.dark{background:#151517;border:1px solid rgba(255,255,255,.07)}
+
+  /* ── 菜单（与效果图一致） ── */
+  .menu{width:300px;border-radius:14px;background:#fff;padding:6px;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.10),0 10px 28px rgba(15,17,21,.14),0 2px 6px rgba(15,17,21,.06)}
+  .mhead{padding:8px 10px 9px}
+  .mname{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mmeta{display:block;margin-top:3px;font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .sep{height:1px;background:var(--line);margin:4px 0}
+  .item{width:100%;height:36px;border:0;background:transparent;border-radius:9px;display:flex;align-items:center;gap:10px;
+    padding:0 10px;font-family:inherit;font-size:13px;color:var(--text);text-align:left}
+  .item .ico{width:16px;height:16px;flex:none;color:var(--text2);display:grid;place-items:center}
+  .item .lbl{flex:1}
+  .item .kbd{font-size:10.5px;color:var(--text3)}
+  .item.hover{background:var(--hover)}
+  .menu.dark{background:#232324;box-shadow:0 0 0 .5px rgba(255,255,255,.10),0 10px 28px rgba(0,0,0,.55)}
+  .menu.dark .mname{color:#f9fafb}
+  .menu.dark .mmeta{color:#979da6}
+  .menu.dark .item{color:#f2f3f5}
+  .menu.dark .item .ico{color:#a8adb5}
+  .menu.dark .item .kbd{color:#81858c}
+  .menu.dark .item.hover{background:rgba(255,255,255,.08)}
+  .menu.dark .sep{background:rgba(255,255,255,.08)}
+
+  /* ── 状态列表 ── */
+  .states{flex:1;min-width:0}
+  .srow{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+  .stag{width:64px;font-size:11px;color:var(--text3);text-align:right;flex:none}
+  .mini{width:300px;border-radius:12px;background:#fff;padding:4px;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.09),0 4px 12px rgba(15,17,21,.07)}
+  .mini .item{height:32px;font-size:12.5px}
+  .mini .item.focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--hover)}
+  .mini .item.busy{opacity:.55}
+  .spin{width:13px;height:13px;border-radius:50%;border:1.6px solid rgba(0,0,0,.15);border-top-color:#4176e6;flex:none}
+  .note{font-size:11px;color:var(--text3);margin-left:2px}
+
+  /* ── Toast ── */
+  .toasts{display:flex;gap:26px;margin-top:26px;align-items:flex-start}
+  .toast{display:flex;align-items:center;gap:9px;height:38px;padding:0 14px;border-radius:11px;background:#1b1b1c;
+    color:#f5f6f7;font-size:12.5px;box-shadow:0 8px 22px rgba(0,0,0,.18);white-space:nowrap}
+  .toast .ok{width:16px;height:16px;border-radius:50%;background:#2ea043;display:grid;place-items:center;flex:none}
+  .toast .warn{width:16px;height:16px;border-radius:50%;background:#d29922;display:grid;place-items:center;flex:none;color:#1b1b1c;font-size:10px;font-weight:700}
+  .toast svg{width:9px;height:9px;color:#fff}
+  .toast .act{margin-left:4px;color:#7aaaff;font-weight:600}
+  .toast .tsep{width:1px;height:14px;background:rgba(255,255,255,.18)}
+
+  /* ── 规格卡 ── */
+  .specs{display:flex;gap:16px;margin-top:28px}
+  .spec{width:206px;height:84px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:13px 14px}
+  .spec b{display:block;font-size:17px;font-weight:700;letter-spacing:-.2px}
+  .spec b small{font-size:11px;font-weight:600;color:var(--text3);margin-left:2px;letter-spacing:0}
+  .spec span{display:block;margin-top:4px;font-size:11px;color:var(--text2)}
+  .extra{display:flex;gap:30px;margin-top:26px;align-items:flex-start}
+  .maskdemo{width:360px;height:126px;border-radius:14px;background:#2a2b2f;display:flex;align-items:center;justify-content:center;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+  .tb{display:flex;align-items:center;gap:2px;padding:5px;border-radius:12px;background:#fff;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 8px 20px rgba(0,0,0,.25)}
+  .tb .it{display:flex;align-items:center;gap:7px;height:32px;padding:0 10px;border-radius:8px;font-size:12px;color:#0f1115}
+  .tb .it.hover{background:rgba(38,49,72,.06)}
+  .tb .it svg{width:14px;height:14px;color:#61666b}
+  .tb .vsep{width:1px;height:16px;background:rgba(0,0,0,.10);margin:0 5px}
+  .tb .hint{font-size:10.5px;color:#81858c;padding:0 8px 0 5px;white-space:nowrap}
+  .rules{flex:1;border-radius:14px;border:1px solid var(--line);background:var(--bg);padding:12px 18px 14px}
+  .rules div{font-size:12px;color:var(--text2);line-height:1.95}
+  .rules b{color:var(--text);font-weight:600}
+  .rules code{font-family:Consolas,monospace;font-size:11.5px;background:rgba(38,49,72,.06);border-radius:4px;padding:1px 4px}  .foot{margin-top:22px;font-size:11.5px;color:var(--text3);display:flex;gap:22px}
+  .foot b{color:var(--text2);font-weight:600}
+</style>
+</head>
+<body>
+  <span class="badge">dsh-image-tools</span>
+  <h1>右键菜单：规格与状态</h1>
+  <p class="sub">菜单是插件唯一的常驻 UI；预览层工具条复用同一套行样式与图标，不引入新的视觉语言。</p>
+
+  <div class="row">
+    <div class="col">
+      <div class="cap">浅色主题 · 跟随 <code>--dsw-*</code> 变量</div>
+      <div class="panel light">
+        <div class="menu">
+          <div class="mhead">
+            <span class="mname">dsh-image-20261105-1528.png</span>
+            <span class="mmeta">2620 × 1680 · 486 KB</span>
+          </div>
+          <div class="sep"></div>
+          <button class="item hover"><span class="ico">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.2" y="5.2" width="8.6" height="8.6" rx="2"/><path d="M10.4 5.2V3.9c0-.9-.7-1.6-1.6-1.6H3.9c-.9 0-1.6.7-1.6 1.6v4.9c0 .9.7 1.6 1.6 1.6h1.3"/></svg>
+          </span><span class="lbl">复制图片</span><span class="kbd">Ctrl C</span></button>
+          <button class="item"><span class="ico">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v7.2"/><path d="M5.1 7.2 8 10.1l2.9-2.9"/><path d="M2.8 12.1v.9c0 .5.4.9.9.9h8.6c.5 0 .9-.4.9-.9v-.9"/></svg>
+          </span><span class="lbl">下载原图</span><span class="kbd">Enter</span></button>
+          <div class="sep"></div>
+          <div class="mhead" style="padding:7px 10px 6px"><span class="mmeta" style="margin:0">原图字节 · 不压缩 · 不写入磁盘</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="cap">深色主题 · 同尺寸、同层级</div>
+      <div class="panel dark">
+        <div class="menu dark">
+          <div class="mhead">
+            <span class="mname">dsh-image-20261105-1528.png</span>
+            <span class="mmeta">2620 × 1680 · 486 KB</span>
+          </div>
+          <div class="sep"></div>
+          <button class="item hover"><span class="ico">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.2" y="5.2" width="8.6" height="8.6" rx="2"/><path d="M10.4 5.2V3.9c0-.9-.7-1.6-1.6-1.6H3.9c-.9 0-1.6.7-1.6 1.6v4.9c0 .9.7 1.6 1.6 1.6h1.3"/></svg>
+          </span><span class="lbl">复制图片</span><span class="kbd">Ctrl C</span></button>
+          <button class="item"><span class="ico">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v7.2"/><path d="M5.1 7.2 8 10.1l2.9-2.9"/><path d="M2.8 12.1v.9c0 .5.4.9.9.9h8.6c.5 0 .9-.4.9-.9v-.9"/></svg>
+          </span><span class="lbl">下载原图</span><span class="kbd">Enter</span></button>
+          <div class="sep"></div>
+          <div class="mhead" style="padding:7px 10px 6px"><span class="mmeta" style="margin:0">原图字节 · 不压缩 · 不写入磁盘</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col states">
+      <div class="cap">行状态</div>
+      <div class="srow"><span class="stag">默认</span>
+        <div class="mini"><button class="item"><span class="ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.2" y="5.2" width="8.6" height="8.6" rx="2"/><path d="M10.4 5.2V3.9c0-.9-.7-1.6-1.6-1.6H3.9c-.9 0-1.6.7-1.6 1.6v4.9c0 .9.7 1.6 1.6 1.6h1.3"/></svg></span><span class="lbl">复制图片</span><span class="kbd">Ctrl C</span></button></div>
+      </div>
+      <div class="srow"><span class="stag">悬停</span>
+        <div class="mini"><button class="item hover"><span class="ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.2" y="5.2" width="8.6" height="8.6" rx="2"/><path d="M10.4 5.2V3.9c0-.9-.7-1.6-1.6-1.6H3.9c-.9 0-1.6.7-1.6 1.6v4.9c0 .9.7 1.6 1.6 1.6h1.3"/></svg></span><span class="lbl">复制图片</span><span class="kbd">Ctrl C</span></button></div>
+      </div>
+      <div class="srow"><span class="stag">键盘焦点</span>
+        <div class="mini"><button class="item focus"><span class="ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.2" y="5.2" width="8.6" height="8.6" rx="2"/><path d="M10.4 5.2V3.9c0-.9-.7-1.6-1.6-1.6H3.9c-.9 0-1.6.7-1.6 1.6v4.9c0 .9.7 1.6 1.6 1.6h1.3"/></svg></span><span class="lbl">复制图片</span><span class="kbd">Ctrl C</span></button></div>
+      </div>
+      <div class="srow"><span class="stag">复制中</span>
+        <div class="mini"><button class="item busy"><span class="spin"></span><span class="lbl">复制中…</span><span class="kbd">请稍候</span></button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts">
+    <div class="toast"><span class="ok"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2 4.8 8.5 9.5 3.8"/></svg></span>已复制图片到剪贴板</div>
+    <div class="toast"><span class="warn">!</span>当前环境不支持复制图片<span class="tsep"></span><span class="act">改用下载</span></div>
+    <div class="toast"><span class="ico" style="width:16px;height:16px;display:grid;place-items:center;color:#7aaaff">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v7.2"/><path d="M5.1 7.2 8 10.1l2.9-2.9"/><path d="M2.8 12.1v.9c0 .5.4.9.9.9h8.6c.5 0 .9-.4.9-.9v-.9"/></svg>
+    </span>已开始下载 dsh-image-20261105-1528.png</div>
+  </div>
+
+  <div class="specs">
+    <div class="spec"><b>300<small>px</small></b><span>菜单宽度（不含阴影）</span></div>
+    <div class="spec"><b>14<small>px</small></b><span>圆角 · 与 Panel 一致</span></div>
+    <div class="spec"><b>36<small>px</small></b><span>行高 · 内边距 6px</span></div>
+    <div class="spec"><b>16<small>px</small></b><span>图标 · 线宽 1.3</span></div>
+    <div class="spec"><b>13<small>px</small></b><span>行字号 · 标题 12.5px/600</span></div>
+    <div class="spec"><b>8<small>px</small></b><span>视口边距 · 越界翻转</span></div>
+  </div>
+
+  <div class="extra">
+    <div>
+      <div class="cap">预览层工具条 · 复用同一套行样式与图标</div>
+      <div class="maskdemo">
+        <div class="tb">
+          <span class="it hover">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.2" y="5.2" width="8.6" height="8.6" rx="2"/><path d="M10.4 5.2V3.9c0-.9-.7-1.6-1.6-1.6H3.9c-.9 0-1.6.7-1.6 1.6v4.9c0 .9.7 1.6 1.6 1.6h1.3"/></svg>
+            复制图片
+          </span>
+          <span class="it">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v7.2"/><path d="M5.1 7.2 8 10.1l2.9-2.9"/><path d="M2.8 12.1v.9c0 .5.4.9.9.9h8.6c.5 0 .9-.4.9-.9v-.9"/></svg>
+            下载原图
+          </span>
+          <span class="vsep"></span>
+          <span class="hint">Esc 关闭预览</span>
+        </div>
+      </div>
+    </div>
+    <div class="rules">
+      <div><b>接管</b> · <code>conversation.chat.user.images</code> · <code>conversation.chat.message.images</code> · <code>tool.call.images</code> · <code>conversation.trajectory.images</code></div>
+      <div><b>覆盖</b> · 四个槽位均为 single；官方以 priority 100 注册，本插件用 priority 10 取而代之（同优先级会报错）</div>
+      <div><b>弹层</b> · <code>shell.overlay</code>（list · root）承载预览遮罩、工具条与菜单；不查询官方 DOM、不向 <code>document.body</code> 追加节点</div>
+      <div><b>卸载</b> · 槽位条目与 overlay 条目随 <code>ctx.dispose</code> 移除，无残留节点与全局状态</div>
+    </div>
+  </div>
+  <div class="foot">
+    <span><b>键盘</b> ↑ ↓ 移动 · Enter 执行 · Esc 关闭 · Ctrl + C 复制</span>
+    <span><b>焦点</b> 打开时聚焦首行，关闭后归还给原图片</span>
+    <span><b>关闭</b> 点击外部 / 滚动 / 窗口失焦 / 切换会话</span>
+  </div>
+</body>
+</html>
+
+
