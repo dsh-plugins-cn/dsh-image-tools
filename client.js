@@ -2,12 +2,17 @@
  * dsh-image-tools — browser half.
  *
  * Takes over the four message-image slots and renders the gallery itself, so
- * every conversation image gains three entry points for the same two actions:
- * a hover action cup on the thumbnail, a right-click menu, and the toolbar of
- * the full-screen preview. Overlay surfaces register into `shell.overlay`.
+ * every conversation image gains three entry points for the same actions:
+ * a hover action cup on the thumbnail, a right-click menu, and the bottom
+ * toolbar of the full-screen preview.
  *
- * Rules honoured here: no DOM scraping, no body-root writes, no imports
- * from other Client packages, theme tokens only, every registration through
+ * The preview never places a control in the window-caption band (Windows
+ * title-bar buttons, macOS traffic lights). Every preview control lives in a
+ * bottom toolbar; the image stage clears DSH's own overlay-safe area through
+ * `--dsh-frame-overlay-top`. Scales and pans are plain CSS transforms.
+ *
+ * Rules honoured here: no DOM scraping, no body-root writes, no imports from
+ * other Client packages, theme tokens only, every registration through
  * `ctx.slots.inject` so disposal removes it.
  */
 window.__ModuleLoader__.load({
@@ -15,7 +20,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const { useEffect, useRef, useState, useSyncExternalStore } = React
+    const { useCallback, useEffect, useRef, useState, useSyncExternalStore } = React
 
     const NS = 'dsh-image-tools'
     const PRIORITY = 10
@@ -26,6 +31,10 @@ window.__ModuleLoader__.load({
       'tool.call.images',
       'conversation.trajectory.images',
     ]
+
+    const ZOOM_MIN = 0.25
+    const ZOOM_MAX = 8
+    const ZOOM_STEP = 1.25
 
     const MESSAGES = {
       zh: {
@@ -41,7 +50,19 @@ window.__ModuleLoader__.load({
         'menu.shortcut': 'Ctrl C',
         'preview.label': '图片预览',
         'preview.close': '关闭预览',
+        'preview.closeShort': '关闭',
         'preview.esc': 'Esc 关闭预览',
+        'preview.zoomOut': '缩小',
+        'preview.zoomIn': '放大',
+        'preview.fit': '适配',
+        'preview.fitTitle': '适配窗口',
+        'preview.resetZoom': '重置为 100%',
+        'preview.prev': '上一张',
+        'preview.next': '下一张',
+        'preview.page': '第 {current} / {total} 张',
+        'preview.loadFailed': '图片加载失败',
+        'preview.retry': '重试',
+        'preview.zoomHint': '滚轮缩放 · 双击复位 · 放大后拖动平移 · Esc 关闭',
         'toast.copied': '已复制图片到剪贴板',
         'toast.copyFailed': '当前环境不支持复制图片',
         'toast.useDownload': '改用下载',
@@ -61,7 +82,19 @@ window.__ModuleLoader__.load({
         'menu.shortcut': 'Ctrl C',
         'preview.label': 'Image preview',
         'preview.close': 'Close preview',
+        'preview.closeShort': 'Close',
         'preview.esc': 'Esc to close',
+        'preview.zoomOut': 'Zoom out',
+        'preview.zoomIn': 'Zoom in',
+        'preview.fit': 'Fit',
+        'preview.fitTitle': 'Fit to window',
+        'preview.resetZoom': 'Reset to 100%',
+        'preview.prev': 'Previous image',
+        'preview.next': 'Next image',
+        'preview.page': 'Image {current} of {total}',
+        'preview.loadFailed': 'Image failed to load',
+        'preview.retry': 'Retry',
+        'preview.zoomHint': 'Wheel to zoom · double-click to reset · drag to pan · Esc to close',
         'toast.copied': 'Image copied to the clipboard',
         'toast.copyFailed': 'Copying images is not supported here',
         'toast.useDownload': 'Download instead',
@@ -72,6 +105,7 @@ window.__ModuleLoader__.load({
 
     let translate = (key) => (MESSAGES.zh[key] !== undefined ? MESSAGES.zh[key] : key)
     const t = (key) => translate(key)
+    const fill = (key, values) => t(key).replace(/\{(\w+)\}/g, (match, name) => (values[name] === undefined ? match : String(values[name])))
 
     const CSS = `
 .dit-gallery{display:flex;flex-wrap:wrap;gap:10px;max-width:100%}
@@ -109,22 +143,49 @@ window.__ModuleLoader__.load({
 .dit-menu-label{flex:1}
 .dit-menu-kbd{font-size:10.5px;color:var(--dsw-alias-label-tertiary)}
 .dit-menu-foot{padding:7px 10px 6px;font-size:11px;color:var(--dsw-alias-label-tertiary)}
-.dit-preview{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;padding:64px 40px 110px;pointer-events:auto;background:var(--dsw-alias-bg-mask-1)}
-.dit-preview-image{max-width:min(100%,1600px);max-height:100%;object-fit:contain;border-radius:var(--dsw-radius-lg);box-shadow:var(--dsw-elevation-prominent);background:var(--dsw-specific-input-major)}
-.dit-preview-close{position:absolute;top:20px;right:20px;width:36px;height:36px;display:grid;place-items:center;padding:0;border:.5px solid var(--dsw-alias-border-l2-darkmode-thin);border-radius:999px;background:var(--dsw-specific-input-major);color:var(--dsw-alias-label-primary);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-.dit-preview-close:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.dit-preview-close svg{width:15px;height:15px}
-.dit-toolbar{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:6px;border-radius:14px;background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary);box-shadow:0 0 0 .5px rgba(0,0,0,.1),0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08)}
-.dit-toolbar-button{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer}
-.dit-toolbar-button:hover,.dit-toolbar-button:focus-visible{background:var(--dsw-alias-interactive-bg-hover);outline:none}
-.dit-toolbar-button svg{width:16px;height:16px;color:var(--dsw-alias-label-secondary)}
-.dit-toolbar-sep{width:1px;height:18px;margin:0 6px;background:var(--dsw-alias-border-l2)}
-.dit-toolbar-hint{padding:0 10px 0 6px;font-size:11.5px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+
+/* Preview: the caption band stays empty. The stage clears DSH's own
+   overlay-safe inset; every control is anchored to the bottom. */
+.dit-preview{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;pointer-events:auto;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur)}
+.dit-preview-stage{position:relative;flex:1;min-height:0;margin:calc(var(--dsh-frame-overlay-top,20px) + 8px) 32px 0;overflow:hidden;touch-action:none}
+.dit-preview-stage[data-pan="true"]{cursor:grab}
+.dit-preview-stage[data-dragging="true"]{cursor:grabbing}
+.dit-preview-image{position:absolute;left:0;top:0;transform-origin:0 0;user-select:none;-webkit-user-drag:none;border-radius:var(--dsw-radius-lg);box-shadow:var(--dsw-elevation-prominent);background:var(--dsw-specific-input-major)}
+.dit-preview-image[hidden]{display:none}
+.dit-preview-state{position:absolute;inset:0;display:grid;place-items:center;color:var(--dsw-alias-label-secondary);font-size:13px;gap:10px}
+.dit-preview-state .dit-spinner{width:20px;height:20px}
+.dit-preview-retry{height:32px;padding:0 14px;border:.5px solid var(--dsw-alias-border-l2-darkmode-thin);border-radius:9px;background:var(--dsw-specific-input-major);color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px;cursor:pointer}
+.dit-preview-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}
+
+.dit-preview-toolbar{flex:none;align-self:center;max-width:calc(100% - 32px);display:flex;align-items:center;gap:2px;height:48px;margin:10px 0 6px;padding:5px 7px;border-radius:14px;background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary);box-shadow:0 0 0 .5px rgba(0,0,0,.1),0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08);white-space:nowrap}
+.dit-tb-btn{display:flex;align-items:center;justify-content:center;gap:7px;height:36px;min-width:36px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.dit-tb-btn:hover,.dit-tb-btn:focus-visible{background:var(--dsw-alias-interactive-bg-hover);outline:none}
+.dit-tb-btn[disabled]{opacity:.4;cursor:default}
+.dit-tb-btn[disabled]:hover{background:transparent}
+.dit-tb-btn svg{width:16px;height:16px;flex:none;color:var(--dsw-alias-label-secondary)}
+.dit-tb-btn.icon{padding:0;width:36px}
+.dit-tb-btn.act{background:var(--dsw-alias-state-business-primary);color:#fff}
+.dit-tb-btn.act svg{color:#fff}
+.dit-tb-btn.act:hover{background:var(--dsw-alias-state-business-primary)}
+.dit-tb-group{display:flex;align-items:center;gap:2px}
+.dit-tb-sep{width:1px;height:20px;margin:0 5px;background:var(--dsw-alias-border-l2);flex:none}
+.dit-tb-file{max-width:210px;padding:0 9px;display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0}
+.dit-tb-file b{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dit-tb-file span{font-size:10px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dit-tb-pct{min-width:52px;font-variant-numeric:tabular-nums;font-size:12.5px}
+.dit-tb-page{min-width:52px;text-align:center;font-size:12px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.dit-tb-kbd{font-size:10.5px;color:var(--dsw-alias-label-tertiary);border:.5px solid var(--dsw-alias-border-l2);border-radius:5px;padding:1px 5px;line-height:1.3}
+.dit-preview-hint{flex:none;align-self:center;margin:0 0 10px;font-size:11px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+@media (max-width:900px){.dit-tb-file{display:none}.dit-preview-hint{display:none}}
+@media (max-width:680px){.dit-tb-btn{padding:0;width:36px;font-size:0;gap:0}.dit-tb-btn .dit-tb-kbd,.dit-tb-btn .dit-tb-label{display:none}.dit-tb-sep{margin:0 2px}}
 .dit-toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:9px;height:38px;padding:0 14px;border-radius:11px;pointer-events:auto;white-space:nowrap;font-size:12.5px;background:var(--dsw-alias-label-primary,#1b1b1c);color:var(--dsw-alias-bg-base,#f5f6f7);box-shadow:0 8px 24px rgba(0,0,0,.22)}
 .dit-toast-mark{width:16px;height:16px;flex:none;border-radius:50%;display:grid;place-items:center;border:1px solid currentColor;opacity:.85}
 .dit-toast-mark svg{width:9px;height:9px}
 .dit-toast-action{margin-left:2px;padding:0 2px;border:0;background:transparent;color:var(--dsw-alias-link,#7aaaff);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
-`    // ---------------------------------------------------------------- store
+`
+
+    // ---------------------------------------------------------------- store
+
     function createStore() {
       let state = { preview: null, menu: null, toast: null, busy: false }
       let timer = null
@@ -141,6 +202,10 @@ window.__ModuleLoader__.load({
         },
         setPreview(preview) {
           publish({ ...state, preview, menu: null })
+        },
+        setPreviewIndex(index) {
+          if (state.preview === null) return
+          publish({ ...state, preview: { ...state.preview, index } })
         },
         clearPreview() {
           if (state.preview) publish({ ...state, preview: null })
@@ -178,6 +243,7 @@ window.__ModuleLoader__.load({
     const store = createStore()
 
     // -------------------------------------------------------------- helpers
+
     const EXTENSIONS = {
       'image/png': 'png',
       'image/jpeg': 'jpg',
@@ -346,7 +412,73 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // ------------------------------------------------------------- image data
+
+    function itemFromSpec(image, load) {
+      const attachment = image && image.attachment
+      const preview = image && image.preview
+      const name = (attachment && attachment.name) || (preview && preview.name) || ''
+      const mediaType = (attachment && attachment.mediaType) || (preview && preview.mediaType) || ''
+      const width = attachment && Number.isFinite(attachment.width) ? attachment.width : preview && Number.isFinite(preview.width) ? preview.width : undefined
+      const height = attachment && Number.isFinite(attachment.height) ? attachment.height : preview && Number.isFinite(preview.height) ? preview.height : undefined
+      const bytes = attachment && Number.isFinite(attachment.bytes) ? attachment.bytes : undefined
+      return {
+        key: attachment && attachment.attachmentId ? attachment.attachmentId : (preview && preview.url) || name || 'image',
+        attachment,
+        preview,
+        name,
+        mediaType,
+        width,
+        height,
+        bytes,
+        load: attachment && typeof load === 'function' ? load : undefined,
+      }
+    }
+
+    function infoOfItem(item, src) {
+      return {
+        src,
+        name: item.name,
+        mediaType: item.mediaType,
+        width: item.width,
+        height: item.height,
+        bytes: item.bytes,
+        reload: item.load && item.attachment ? () => item.load(item.attachment) : undefined,
+      }
+    }
+
+    /** Image blocks of one conversation node, in source order. */
+    function imagesFromNode(node) {
+      if (!node || typeof node !== 'object') return []
+      const out = []
+      if (node.kind === 'assistant' && Array.isArray(node.blocks)) {
+        for (const block of node.blocks) {
+          if (block && block.kind === 'image' && block.attachment) out.push({ attachment: block.attachment })
+        }
+        return out
+      }
+      if (Array.isArray(node.content)) {
+        for (const block of node.content) {
+          if (block && block.type === 'image' && block.attachment) out.push({ attachment: block.attachment })
+        }
+      }
+      return out
+    }
+
+    /** The images of the single conversation message that owns `attachmentId`. */
+    function collectMessageImages(nodes, attachmentId) {
+      if (!Array.isArray(nodes) || typeof attachmentId !== 'string' || attachmentId === '') return []
+      for (const node of nodes) {
+        const images = imagesFromNode(node)
+        if (images.length === 0) continue
+        if (!images.some((image) => image.attachment && image.attachment.attachmentId === attachmentId)) continue
+        return images
+      }
+      return []
+    }
+
     // ---------------------------------------------------------------- icons
+
     function CopyIcon() {
       return h(
         'svg',
@@ -392,7 +524,40 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function MinusIcon() {
+      return h(
+        'svg',
+        { viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', 'aria-hidden': true },
+        h('path', { d: 'M3.5 8h9' }),
+      )
+    }
+
+    function PlusIcon() {
+      return h(
+        'svg',
+        { viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', 'aria-hidden': true },
+        h('path', { d: 'M8 3.5v9M3.5 8h9' }),
+      )
+    }
+
+    function PrevIcon() {
+      return h(
+        'svg',
+        { viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+        h('path', { d: 'M10 3.5 5.5 8 10 12.5' }),
+      )
+    }
+
+    function NextIcon() {
+      return h(
+        'svg',
+        { viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+        h('path', { d: 'M6 3.5 10.5 8 6 12.5' }),
+      )
+    }
+
     // --------------------------------------------------------------- gallery
+
     function singleFit(dimensions) {
       if (dimensions === undefined || !Number.isFinite(dimensions.width) || !Number.isFinite(dimensions.height)) {
         return { width: 240, height: 240, objectPosition: 'center' }
@@ -419,7 +584,7 @@ window.__ModuleLoader__.load({
       return undefined
     }
 
-    function MessageImage({ image, load, variant }) {
+    function MessageImage({ image, load, variant, onOpen }) {
       const preview = image.preview
       const attachment = image.attachment
       const [src, setSrc] = useState(() => {
@@ -471,7 +636,7 @@ window.__ModuleLoader__.load({
         event.preventDefault()
         event.stopPropagation()
         if (src === null) return
-        store.setPreview({ ...infoOf(), anchor: frameRef.current })
+        onOpen(frameRef.current)
       }
 
       const openMenu = (event) => {
@@ -571,29 +736,487 @@ window.__ModuleLoader__.load({
 
     function ImageGallery(props) {
       const images = Array.isArray(props.images) ? props.images : []
+      const load = props.loadImage
+      const useChat = props.useChat
+      // Slot standard props include useChat; the fallback keeps the hook order
+      // stable when a host version does not provide it.
+      const useChatHook = typeof useChat === 'function' ? useChat : () => undefined
+      const chat = useChatHook((snapshot) => snapshot)
+      const nodes = chat && chat.legacy && Array.isArray(chat.legacy.nodes) ? chat.legacy.nodes : undefined
+
       if (images.length === 0) return null
       const variant = props.thumbnail ? 'thumbnail' : props.compact || images.length > 1 ? 'tile' : 'single'
+
+      const openAt = (clickedIndex, anchor) => {
+        const specs = images
+        const items = specs.map((image) => itemFromSpec(image, load))
+        store.setPreview({ items, index: Math.max(0, Math.min(items.length - 1, clickedIndex)), anchor })
+      }
+
       return h(
         'div',
         { className: 'dit-gallery', 'data-align': props.align },
         images.map((image, index) =>
-          h(MessageImage, { key: index, image, load: props.loadImage, variant }),
+          h(MessageImage, {
+            key: index,
+            image,
+            load,
+            variant,
+            onOpen: (anchor) => openAt(index, anchor),
+          }),
         ),
       )
-    }    // --------------------------------------------------------------- overlay
+    }
+
+    // --------------------------------------------------------------- preview
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+    function clampPosition(view, dimensions, stage) {
+      const width = dimensions.width * view.scale
+      const height = dimensions.height * view.scale
+      let x = view.x
+      let y = view.y
+      x = width <= stage.width ? (stage.width - width) / 2 : clamp(x, stage.width - width, 0)
+      y = height <= stage.height ? (stage.height - height) / 2 : clamp(y, stage.height - height, 0)
+      return { scale: view.scale, x, y }
+    }
+
+    function Preview({ preview, onClose }) {
+      const items = preview.items
+      const index = preview.index
+      const item = items[index] || items[0]
+      const stageRef = useRef(null)
+      const imageRef = useRef(null)
+      const closeRef = useRef(null)
+      const rootRef = useRef(null)
+      const [src, setSrc] = useState(null)
+      const [failed, setFailed] = useState(false)
+      const [attempt, setAttempt] = useState(0)
+      const [dimensions, setDimensions] = useState(null)
+      const [stage, setStage] = useState({ width: 0, height: 0 })
+      const [free, setFree] = useState(null)
+      const [dragging, setDragging] = useState(false)
+      const dragRef = useRef(null)
+
+      const itemKey = item.key
+
+      // Resolve the current image: local preview URL, loader cache, or loader.
+      useEffect(() => {
+        let live = true
+        setSrc(null)
+        setFailed(false)
+        setDimensions(
+          item.width !== undefined && item.height !== undefined
+            ? { width: item.width, height: item.height }
+            : null,
+        )
+        if (item.preview && item.preview.url) {
+          setSrc(item.preview.url)
+          return () => { live = false }
+        }
+        if (item.attachment === undefined || typeof item.load !== 'function') {
+          setFailed(true)
+          return () => { live = false }
+        }
+        const cached = typeof item.load.peek === 'function' ? item.load.peek(item.attachment) : undefined
+        if (typeof cached === 'string' && cached !== '') {
+          setSrc(cached)
+          return () => { live = false }
+        }
+        Promise.resolve()
+          .then(() => item.load(item.attachment))
+          .then((url) => {
+            if (live && typeof url === 'string' && url !== '') setSrc(url)
+          })
+          .catch(() => {
+            if (live) setFailed(true)
+          })
+        return () => { live = false }
+      }, [itemKey, attempt, item])
+
+      // Moving to another image starts from fit again.
+      useEffect(() => {
+        setFree(null)
+      }, [itemKey])
+
+      // Stage box: the preview keeps the caption band free, so the measured box
+      // is exactly the area the image may occupy.
+      useEffect(() => {
+        const node = stageRef.current
+        if (node === null) return undefined
+        const measure = () => setStage({ width: node.clientWidth, height: node.clientHeight })
+        measure()
+        if (typeof ResizeObserver === 'undefined') return undefined
+        const observer = new ResizeObserver(measure)
+        observer.observe(node)
+        return () => observer.disconnect()
+      }, [])
+
+      const fitScale = dimensions !== null && stage.width > 0 && stage.height > 0
+        ? Math.min(1, stage.width / dimensions.width, stage.height / dimensions.height)
+        : 1
+      const scale = free === null ? fitScale : free.scale
+      const position = free === null
+        ? {
+            x: dimensions === null ? 0 : (stage.width - dimensions.width * fitScale) / 2,
+            y: dimensions === null ? 0 : (stage.height - dimensions.height * fitScale) / 2,
+          }
+        : free
+      const canPan = free !== null && dimensions !== null
+        && (dimensions.width * free.scale > stage.width + 1 || dimensions.height * free.scale > stage.height + 1)
+
+      const zoomAt = useCallback((nextScale, clientX, clientY) => {
+        if (dimensions === null || stage.width === 0 || stage.height === 0) return
+        const node = stageRef.current
+        if (node === null) return
+        const bounds = node.getBoundingClientRect()
+        const anchorX = clientX === undefined ? stage.width / 2 : clientX - bounds.left
+        const anchorY = clientY === undefined ? stage.height / 2 : clientY - bounds.top
+        const current = free === null
+          ? { scale: fitScale, x: (stage.width - dimensions.width * fitScale) / 2, y: (stage.height - dimensions.height * fitScale) / 2 }
+          : free
+        const target = clamp(nextScale, Math.min(ZOOM_MIN, fitScale), ZOOM_MAX)
+        if (target === current.scale) return
+        const ratio = target / current.scale
+        const next = {
+          scale: target,
+          x: anchorX - (anchorX - current.x) * ratio,
+          y: anchorY - (anchorY - current.y) * ratio,
+        }
+        setFree(clampPosition(next, dimensions, stage))
+      }, [dimensions, fitScale, free, stage])
+
+      const resetFit = useCallback(() => { setFree(null) }, [])
+
+      const zoomBy = useCallback((factor) => {
+        zoomAt(scale * factor)
+      }, [scale, zoomAt])
+
+      const goTo = useCallback((next) => {
+        if (next < 0 || next >= items.length) return
+        store.setPreviewIndex(next)
+      }, [items.length])
+
+      const currentInfo = () => infoOfItem(item, src)
+
+      // Wheel: zoom at the pointer. Plain wheel and trackpad pinch (ctrl+wheel)
+      // both zoom instead of scrolling or page-zooming.
+      useEffect(() => {
+        const node = stageRef.current
+        if (node === null) return undefined
+        const onWheel = (event) => {
+          if (event.deltaY === 0) return
+          event.preventDefault()
+          const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? node.clientHeight : 1
+          const delta = clamp(event.deltaY * unit, -120, 120)
+          const sensitivity = event.ctrlKey ? 0.01 : 0.0015
+          zoomAt(scale * Math.exp(-delta * sensitivity), event.clientX, event.clientY)
+        }
+        node.addEventListener('wheel', onWheel, { passive: false })
+        return () => node.removeEventListener('wheel', onWheel)
+      }, [scale, zoomAt])
+
+      const onDoubleClick = (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        if (free === null) zoomAt(1, event.clientX, event.clientY)
+        else resetFit()
+      }
+
+      const onPointerDown = (event) => {
+        if (event.button !== 0 || !canPan) return
+        event.preventDefault()
+        event.stopPropagation()
+        const node = stageRef.current
+        if (node !== null && typeof node.setPointerCapture === 'function') {
+          try { node.setPointerCapture(event.pointerId) } catch (error) { /* detached pointer */ }
+        }
+        dragRef.current = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          view: free,
+        }
+        setDragging(true)
+      }
+
+      const onPointerMove = (event) => {
+        const drag = dragRef.current
+        if (drag === null || drag.pointerId !== event.pointerId) return
+        event.preventDefault()
+        const next = {
+          scale: drag.view.scale,
+          x: drag.view.x + (event.clientX - drag.startX),
+          y: drag.view.y + (event.clientY - drag.startY),
+        }
+        setFree(dimensions === null ? next : clampPosition(next, dimensions, stage))
+      }
+
+      const endDrag = (event) => {
+        const drag = dragRef.current
+        if (drag === null) return
+        dragRef.current = null
+        setDragging(false)
+        const node = stageRef.current
+        if (node !== null && typeof node.releasePointerCapture === 'function' && event.pointerId !== undefined) {
+          try { node.releasePointerCapture(event.pointerId) } catch (error) { /* detached pointer */ }
+        }
+      }
+
+      // Keyboard and focus: Esc/arrows/zoom live here; the menu owns its own
+      // keys while open.
+      useEffect(() => {
+        const onKeyDown = (event) => {
+          if (store.get().menu !== null) return
+          const key = event.key
+          if (key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            onClose()
+            return
+          }
+          if (key === 'ArrowLeft' || key === 'ArrowRight') {
+            if (items.length < 2) return
+            event.preventDefault()
+            event.stopPropagation()
+            goTo(index + (key === 'ArrowRight' ? 1 : -1))
+            return
+          }
+          if (key === '+' || key === '=') {
+            event.preventDefault()
+            event.stopPropagation()
+            zoomBy(ZOOM_STEP)
+            return
+          }
+          if (key === '-' || key === '_') {
+            event.preventDefault()
+            event.stopPropagation()
+            zoomBy(1 / ZOOM_STEP)
+            return
+          }
+          if (key === '0' || key === '1') {
+            event.preventDefault()
+            event.stopPropagation()
+            resetFit()
+            return
+          }
+          if (key === 'Tab') {
+            const root = rootRef.current
+            if (root === null) return
+            const focusable = [...root.querySelectorAll('button')].filter((node) => !node.disabled)
+            if (focusable.length === 0) return
+            event.preventDefault()
+            const active = document.activeElement
+            const current = focusable.indexOf(active)
+            const next = event.shiftKey
+              ? (current <= 0 ? focusable.length - 1 : current - 1)
+              : (current === -1 || current === focusable.length - 1 ? 0 : current + 1)
+            focusable[next].focus()
+          }
+        }
+        window.addEventListener('keydown', onKeyDown, true)
+        return () => window.removeEventListener('keydown', onKeyDown, true)
+      }, [goTo, index, items.length, onClose, resetFit, zoomBy])
+
+      useEffect(() => {
+        if (closeRef.current instanceof HTMLElement) closeRef.current.focus()
+        return undefined
+      }, [])
+
+      const onStageMouseDown = (event) => {
+        if (event.target === event.currentTarget) onClose()
+      }
+
+      const onImageContextMenu = (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        store.openMenu({ ...currentInfo(), x: event.clientX, y: event.clientY, anchor: closeRef.current })
+      }
+
+      const pageLabel = items.length > 1 ? fill('preview.page', { current: index + 1, total: items.length }) : ''
+
+      return h(
+        'div',
+        {
+          ref: rootRef,
+          className: 'dit-preview',
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': t('preview.label'),
+          onMouseDown: (event) => {
+            if (event.target === event.currentTarget) onClose()
+          },
+        },
+        h(
+          'div',
+          {
+            ref: stageRef,
+            className: 'dit-preview-stage',
+            'data-pan': canPan || undefined,
+            'data-dragging': dragging || undefined,
+            onMouseDown: onStageMouseDown,
+            onPointerDown,
+            onPointerMove,
+            onPointerUp: endDrag,
+            onPointerCancel: endDrag,
+            onDoubleClick,
+          },
+          src === null
+            ? failed
+              ? h(
+                  'div',
+                  { className: 'dit-preview-state' },
+                  h('span', null, t('preview.loadFailed')),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'dit-preview-retry',
+                      onClick: () => setAttempt((value) => value + 1),
+                    },
+                    t('preview.retry'),
+                  ),
+                )
+              : h('div', { className: 'dit-preview-state' }, h('span', { className: 'dit-spinner', 'aria-label': t('image.loading') }))
+            : h('img', {
+                ref: imageRef,
+                className: 'dit-preview-image',
+                src,
+                alt: item.name || t('image.alt'),
+                draggable: false,
+                onContextMenu: onImageContextMenu,
+                onLoad: (event) => {
+                  const image = event.currentTarget
+                  if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+                    setDimensions({ width: image.naturalWidth, height: image.naturalHeight })
+                  }
+                },
+                onError: () => setFailed(true),
+                style: dimensions === null
+                  ? { visibility: 'hidden' }
+                  : {
+                      width: dimensions.width + 'px',
+                      height: dimensions.height + 'px',
+                      transform: 'translate(' + position.x + 'px,' + position.y + 'px) scale(' + scale + ')',
+                    },
+              }),
+        ),
+        h(
+          'div',
+          { className: 'dit-preview-toolbar', onMouseDown: (event) => event.stopPropagation() },
+          items.length > 1
+            ? h(
+                'div',
+                { className: 'dit-tb-group' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'dit-tb-btn icon',
+                    title: t('preview.prev'),
+                    'aria-label': t('preview.prev'),
+                    disabled: index === 0,
+                    onClick: () => goTo(index - 1),
+                  },
+                  h(PrevIcon),
+                ),
+                h('span', { className: 'dit-tb-page', 'aria-live': 'polite' }, pageLabel),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'dit-tb-btn icon',
+                    title: t('preview.next'),
+                    'aria-label': t('preview.next'),
+                    disabled: index === items.length - 1,
+                    onClick: () => goTo(index + 1),
+                  },
+                  h(NextIcon),
+                ),
+                h('span', { className: 'dit-tb-sep', 'aria-hidden': true }),
+              )
+            : null,
+          h(
+            'div',
+            { className: 'dit-tb-file', title: downloadName(item, item.mediaType) },
+            h('b', null, downloadName(item, item.mediaType)),
+            h('span', null, metaLine(item)),
+          ),
+          h('span', { className: 'dit-tb-sep', 'aria-hidden': true }),
+          h(
+            'div',
+            { className: 'dit-tb-group' },
+            h(
+              'button',
+              { type: 'button', className: 'dit-tb-btn icon', title: t('preview.zoomOut'), 'aria-label': t('preview.zoomOut'), onClick: () => zoomBy(1 / ZOOM_STEP) },
+              h(MinusIcon),
+            ),
+            h(
+              'button',
+              { type: 'button', className: 'dit-tb-btn dit-tb-pct', title: t('preview.resetZoom'), 'aria-label': t('preview.resetZoom'), onClick: () => zoomAt(1) },
+              Math.round(scale * 100) + '%',
+            ),
+            h(
+              'button',
+              { type: 'button', className: 'dit-tb-btn icon', title: t('preview.zoomIn'), 'aria-label': t('preview.zoomIn'), onClick: () => zoomBy(ZOOM_STEP) },
+              h(PlusIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'dit-tb-btn' + (free === null ? ' act' : ''),
+                title: t('preview.fitTitle'),
+                'aria-label': t('preview.fitTitle'),
+                'aria-pressed': free === null,
+                onClick: resetFit,
+              },
+              h('span', { className: 'dit-tb-label' }, t('preview.fit')),
+            ),
+          ),
+          h('span', { className: 'dit-tb-sep', 'aria-hidden': true }),
+          h(
+            'button',
+            { type: 'button', className: 'dit-tb-btn', onClick: () => runCopy(currentInfo()) },
+            h(CopyIcon),
+            h('span', { className: 'dit-tb-label' }, t('menu.copy')),
+          ),
+          h(
+            'button',
+            { type: 'button', className: 'dit-tb-btn', onClick: () => runDownload(currentInfo()) },
+            h(DownloadIcon),
+            h('span', { className: 'dit-tb-label' }, t('menu.download')),
+          ),
+          h('span', { className: 'dit-tb-sep', 'aria-hidden': true }),
+          h(
+            'button',
+            {
+              ref: closeRef,
+              type: 'button',
+              className: 'dit-tb-btn',
+              title: t('preview.close'),
+              onClick: onClose,
+            },
+            h(CloseIcon),
+            h('span', { className: 'dit-tb-label' }, t('preview.closeShort')),
+            h('span', { className: 'dit-tb-kbd' }, 'Esc'),
+          ),
+        ),
+        h('div', { className: 'dit-preview-hint' }, t('preview.zoomHint')),
+      )
+    }
+
+    // --------------------------------------------------------------- overlay
+
     function Overlay() {
       const state = useSyncExternalStore(store.subscribe, store.get, store.get)
       const rootRef = useRef(null)
       const menuRef = useRef(null)
-      const closeRef = useRef(null)
       const lastAnchor = useRef(null)
 
       useEffect(() => {
         if (state.preview) lastAnchor.current = state.preview.anchor || null
-      }, [state.preview])
-
-      useEffect(() => {
-        if (state.preview && closeRef.current instanceof HTMLElement) closeRef.current.focus()
       }, [state.preview])
 
       useEffect(() => {
@@ -611,23 +1234,25 @@ window.__ModuleLoader__.load({
         if (target instanceof HTMLElement) target.focus()
       }, [state.preview, state.menu])
 
+      // The menu owns keyboard input only while it is open; the preview owns it
+      // otherwise.
       useEffect(() => {
-        if (!state.preview && !state.menu) return undefined
+        if (!state.menu) return undefined
         const onKeyDown = (event) => {
           const menu = store.get().menu
+          if (menu === null) return
           if (event.key === 'Escape') {
             event.preventDefault()
             event.stopPropagation()
-            if (menu) store.closeMenu()
-            else store.clearPreview()
+            store.closeMenu()
             return
           }
-          if (menu && (event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'c') {
+          if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'c') {
             event.preventDefault()
             runCopy(menu)
             return
           }
-          if (menu && (event.key === 'ArrowDown' || event.key === 'ArrowUp') && menuRef.current) {
+          if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && menuRef.current) {
             const items = Array.from(menuRef.current.querySelectorAll('.dit-menu-item'))
             if (items.length === 0) return
             event.preventDefault()
@@ -640,7 +1265,7 @@ window.__ModuleLoader__.load({
         }
         window.addEventListener('keydown', onKeyDown, true)
         return () => window.removeEventListener('keydown', onKeyDown, true)
-      }, [state.preview, state.menu])
+      }, [state.menu])
 
       useEffect(() => {
         if (!state.menu) return undefined
@@ -654,63 +1279,6 @@ window.__ModuleLoader__.load({
           window.removeEventListener('blur', close)
         }
       }, [state.menu])
-
-      const renderPreview = (preview) => {
-        const label = preview.name || t('image.alt')
-        return h(
-          'div',
-          {
-            className: 'dit-preview',
-            role: 'dialog',
-            'aria-modal': 'true',
-            'aria-label': t('preview.label'),
-            onMouseDown: (event) => {
-              if (event.target === event.currentTarget) store.clearPreview()
-            },
-          },
-          h('img', {
-            className: 'dit-preview-image',
-            src: preview.src,
-            alt: label,
-            draggable: false,
-            onMouseDown: (event) => event.stopPropagation(),
-            onContextMenu: (event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              store.openMenu({ ...preview, x: event.clientX, y: event.clientY })
-            },
-          }),
-          h(
-            'button',
-            {
-              ref: closeRef,
-              type: 'button',
-              className: 'dit-preview-close',
-              'aria-label': t('preview.close'),
-              onClick: () => store.clearPreview(),
-            },
-            h(CloseIcon),
-          ),
-          h(
-            'div',
-            { className: 'dit-toolbar', onMouseDown: (event) => event.stopPropagation() },
-            h(
-              'button',
-              { type: 'button', className: 'dit-toolbar-button', onClick: () => runCopy(preview) },
-              h(CopyIcon),
-              t('menu.copy'),
-            ),
-            h(
-              'button',
-              { type: 'button', className: 'dit-toolbar-button', onClick: () => runDownload(preview) },
-              h(DownloadIcon),
-              t('menu.download'),
-            ),
-            h('span', { className: 'dit-toolbar-sep' }),
-            h('span', { className: 'dit-toolbar-hint' }, t('preview.esc')),
-          ),
-        )
-      }
 
       const renderMenu = (menu) => {
         let left = menu.x
@@ -811,7 +1379,13 @@ window.__ModuleLoader__.load({
       return h(
         'div',
         { ref: rootRef, className: 'dit-layer', style: { pointerEvents: 'none' } },
-        state.preview ? renderPreview(state.preview) : null,
+        state.preview
+          ? h(Preview, {
+              key: state.preview.items.map((item) => item.key).join('|'),
+              preview: state.preview,
+              onClose: () => store.clearPreview(),
+            })
+          : null,
         state.menu ? renderMenu(state.menu) : null,
         state.toast ? renderToast(state.toast) : null,
       )
@@ -839,7 +1413,7 @@ window.__ModuleLoader__.load({
           }
         }, 'dsh-image-tools: styles')
 
-        const diagnostics = { slots: {} }
+        const diagnostics = { slots: {}, collectMessageImages }
         globalThis.__DSH_IMAGE_TOOLS__ = diagnostics
         ctx.effect(() => () => {
           store.reset()

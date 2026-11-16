@@ -1,0 +1,354 @@
+{
+  "fixtures": [
+    {
+      "file": "sample-large.png",
+      "bytes": 10842,
+      "sha256": "3b1d1803364b9617a97a77b047b3f08894b30e1cfba8597f91ba5736707cdd75"
+    }
+  ],
+  "steps": [
+    {
+      "name": "new-session",
+      "ok": true,
+      "detail": "新会话Ctrl+Alt+N"
+    },
+    {
+      "name": "composer-focus",
+      "ok": true
+    },
+    {
+      "name": "gallery-rendered",
+      "ok": true,
+      "detail": {
+        "galleries": 1,
+        "tiles": 1,
+        "images": 1,
+        "first": {
+          "naturalWidth": 1600,
+          "naturalHeight": 900
+        }
+      }
+    },
+    {
+      "name": "caption-safe-area",
+      "ok": true,
+      "detail": "calc(40px + 20px)"
+    },
+    {
+      "name": "thumbnail-present",
+      "ok": true
+    },
+    {
+      "name": "preview-opens",
+      "ok": true
+    },
+    {
+      "name": "toolbar-bottom-only",
+      "ok": true,
+      "detail": {
+        "minButtonTop": 822
+      }
+    },
+    {
+      "name": "stage-clears-caption",
+      "ok": true,
+      "detail": {
+        "stageTop": 68,
+        "safeTop": "calc(40px + 20px)"
+      }
+    },
+    {
+      "name": "toolbar-inside-viewport",
+      "ok": true,
+      "detail": {
+        "toolbarBottom": 869,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        }
+      }
+    },
+    {
+      "name": "preview-has-image",
+      "ok": true,
+      "detail": {
+        "left": 68,
+        "top": 68,
+        "width": 1303,
+        "height": 733
+      }
+    },
+    {
+      "name": "screenshot:10-preview-fit.png",
+      "ok": true,
+      "detail": "10-preview-fit.png"
+    },
+    {
+      "name": "wheel-zoom-in",
+      "ok": true,
+      "detail": {
+        "fit": "81%",
+        "zoomed": "98%"
+      }
+    },
+    {
+      "name": "screenshot:11-preview-zoom.png",
+      "ok": true,
+      "detail": "11-preview-zoom.png"
+    },
+    {
+      "name": "drag-state",
+      "ok": true,
+      "detail": "true"
+    },
+    {
+      "name": "drag-pans",
+      "ok": true,
+      "detail": {
+        "before": "matrix(0.975067, 0, 0, 0.975067, -92.0536, -72.3788)",
+        "after": "matrix(0.975067, 0, 0, 0.975067, -2.05362, -22.3788)"
+      }
+    },
+    {
+      "name": "double-click-resets-fit",
+      "ok": true,
+      "detail": {
+        "pct": "81%"
+      }
+    },
+    {
+      "name": "keyboard-zoom",
+      "ok": true,
+      "detail": {
+        "pct": "102%"
+      }
+    },
+    {
+      "name": "keyboard-fit",
+      "ok": true,
+      "detail": {
+        "pct": "81%"
+      }
+    },
+    {
+      "name": "copy-toast",
+      "ok": true,
+      "detail": "已复制图片到剪贴板"
+    },
+    {
+      "name": "screenshot:12-copy-toast.png",
+      "ok": true,
+      "detail": "12-copy-toast.png"
+    },
+    {
+      "name": "download-bytes",
+      "ok": true,
+      "detail": {
+        "downloaded": [
+          {
+            "name": "sample-large.png",
+            "bytes": 10842,
+            "sha256": "3b1d1803364b9617a97a77b047b3f08894b30e1cfba8597f91ba5736707cdd75"
+          }
+        ],
+        "fixture": {
+          "file": "sample-large.png",
+          "bytes": 10842,
+          "sha256": "3b1d1803364b9617a97a77b047b3f08894b30e1cfba8597f91ba5736707cdd75"
+        }
+      }
+    },
+    {
+      "name": "screenshot:13-preview-dark.png",
+      "ok": true,
+      "detail": "13-preview-dark.png"
+    },
+    {
+      "name": "narrow-toolbar-fits",
+      "ok": true,
+      "detail": {
+        "toolbar": 794,
+        "viewport": {
+          "width": 760,
+          "height": 800
+        }
+      }
+    },
+    {
+      "name": "narrow-no-caption-controls",
+      "ok": true,
+      "detail": {
+        "minButtonTop": 747
+      }
+    },
+    {
+      "name": "screenshot:14-preview-narrow.png",
+      "ok": true,
+      "detail": "14-preview-narrow.png"
+    },
+    {
+      "name": "escape-closes",
+      "ok": true
+    },
+    {
+      "name": "context-menu",
+      "ok": true,
+      "detail": "sample-large.png 1600 × 900 · 11 KB 复制图片 Ctrl C 下载原图 Enter 原图字节 · 不压缩 · 不写入磁盘"
+    },
+    {
+      "name": "screenshot:15-thumbnail-menu.png",
+      "ok": true,
+      "detail": "15-thumbnail-menu.png"
+    }
+  ],
+  "fit": {
+    "toolbarTop": 811,
+    "toolbarBottom": 869,
+    "stageTop": 68,
+    "stageRect": {
+      "width": 1376,
+      "height": 733
+    },
+    "imageRect": {
+      "left": 68,
+      "top": 68,
+      "width": 1303,
+      "height": 733
+    },
+    "imageTransform": "matrix(0.814444, 0, 0, 0.814444, 36.4444, 0)",
+    "pct": "81%",
+    "page": null,
+    "buttons": [
+      {
+        "label": "缩小",
+        "top": 822,
+        "bottom": 858,
+        "left": 534
+      },
+      {
+        "label": "重置为 100%",
+        "top": 822,
+        "bottom": 858,
+        "left": 572
+      },
+      {
+        "label": "放大",
+        "top": 822,
+        "bottom": 858,
+        "left": 626
+      },
+      {
+        "label": "适配窗口",
+        "top": 822,
+        "bottom": 858,
+        "left": 664
+      },
+      {
+        "label": "复制图片",
+        "top": 822,
+        "bottom": 858,
+        "left": 725
+      },
+      {
+        "label": "下载原图",
+        "top": 822,
+        "bottom": 858,
+        "left": 822
+      },
+      {
+        "label": "关闭Esc",
+        "top": 822,
+        "bottom": 858,
+        "left": 932
+      }
+    ],
+    "minButtonTop": 822,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "safeTop": "calc(40px + 20px)",
+    "gallery": 1
+  },
+  "zoom": {
+    "toolbarTop": 811,
+    "toolbarBottom": 869,
+    "stageTop": 68,
+    "stageRect": {
+      "width": 1376,
+      "height": 733
+    },
+    "imageRect": {
+      "left": -60,
+      "top": -4,
+      "width": 1560,
+      "height": 878
+    },
+    "imageTransform": "matrix(0.975067, 0, 0, 0.975067, -92.0536, -72.3788)",
+    "pct": "98%",
+    "page": null,
+    "buttons": [
+      {
+        "label": "缩小",
+        "top": 822,
+        "bottom": 858,
+        "left": 534
+      },
+      {
+        "label": "重置为 100%",
+        "top": 822,
+        "bottom": 858,
+        "left": 572
+      },
+      {
+        "label": "放大",
+        "top": 822,
+        "bottom": 858,
+        "left": 626
+      },
+      {
+        "label": "适配窗口",
+        "top": 822,
+        "bottom": 858,
+        "left": 664
+      },
+      {
+        "label": "复制图片",
+        "top": 822,
+        "bottom": 858,
+        "left": 725
+      },
+      {
+        "label": "下载原图",
+        "top": 822,
+        "bottom": 858,
+        "left": 822
+      },
+      {
+        "label": "关闭Esc",
+        "top": 822,
+        "bottom": 858,
+        "left": 932
+      }
+    ],
+    "minButtonTop": 822,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "safeTop": "calc(40px + 20px)",
+    "gallery": 1
+  },
+  "clipboard": [
+    [
+      "image/png"
+    ]
+  ],
+  "downloaded": [
+    {
+      "name": "sample-large.png",
+      "bytes": 10842,
+      "sha256": "3b1d1803364b9617a97a77b047b3f08894b30e1cfba8597f91ba5736707cdd75"
+    }
+  ]
+}

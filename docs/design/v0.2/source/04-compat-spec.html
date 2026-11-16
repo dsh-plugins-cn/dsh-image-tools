@@ -1,0 +1,245 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>v0.2 · 04 兼容与安全区规格</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  body{background:#f6f7f9}
+  .sheet{width:1440px;height:900px;padding:34px 44px;display:flex;flex-direction:column;gap:18px}
+  .sheet-head{display:flex;align-items:flex-end;gap:14px}
+  .sheet-head h1{margin:0;font-size:21px;font-weight:700;letter-spacing:.2px}
+  .sheet-head p{margin:0 0 2px;font-size:12.5px;color:var(--text2)}
+  .sheet-head .ver{margin-left:auto;font-size:11.5px;color:var(--text3);border:.5px solid var(--line2);border-radius:999px;padding:4px 10px;background:#fff}
+  .grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:16px}
+  .card{background:#fff;border:.5px solid rgba(0,0,0,.08);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .card h2{margin:0;font-size:13px;font-weight:650;display:flex;align-items:center;gap:8px}
+  .card h2 .badge{font-size:9.5px;font-weight:600;color:#fff;background:var(--accent);border-radius:5px;padding:1px 5px}
+  .card h2 .badge.red{background:#d1242f}
+  .card h2 .badge.grey{background:#6b7280}
+  .card .desc{margin:0;font-size:11.5px;line-height:1.62;color:var(--text2)}
+  .demo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+
+  /* mini window chrome */
+  .mw{position:relative;width:352px;height:214px;border-radius:10px;overflow:hidden;background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+  .mcap{height:22px;background:#f3f4f6;display:flex;align-items:center;gap:8px;padding:0 8px;position:relative}
+  .mmenus{display:flex;gap:6px;font-size:7px;color:#6b7280}
+  .mwc{margin-left:auto;display:flex;gap:3px;align-items:center}
+  .mwc i{display:block;width:7px;height:7px;border:1px solid #6b7280}
+  .mwc i.c{border:0;position:relative}
+  .mwc i.c::before,.mwc i.c::after{content:"";position:absolute;left:3px;top:-1px;width:1px;height:10px;background:#6b7280;transform:rotate(45deg)}
+  .mwc i.c::after{transform:rotate(-45deg)}
+  .mbody{position:absolute;inset:22px 0 0;display:flex}
+  .mside{width:64px;background:#f7f8f9;border-right:.5px solid rgba(0,0,0,.06);padding:7px 5px;display:flex;flex-direction:column;gap:4px}
+  .mside i{display:block;height:5px;border-radius:2px;background:#e3e6ea}
+  .mmain{flex:1;position:relative;background:#fff;padding:8px 9px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+  .mmain i.l{display:block;height:4px;border-radius:2px;background:#eceff3}
+  .maskmini{position:absolute;inset:0;background:rgba(12,14,18,.55);z-index:2}
+  .mimg{position:absolute;z-index:3;left:50%;top:26px;transform:translateX(-50%);width:170px;height:96px;border-radius:5px;background:#0f1115;
+    box-shadow:0 6px 16px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:3px;padding:7px 8px;overflow:hidden}
+  .mimg i{display:block;height:2.5px;border-radius:1px;background:rgba(255,255,255,.22)}
+  .mimg i.e{background:rgba(255,123,114,.8)}
+  .mimg.light{background:#fff;border:.5px solid rgba(0,0,0,.1)}
+  .mimg.light i{background:#dfe3ea}
+  .mimg.light i.h{height:5px;width:44%;background:#b9c4d6}
+  .mtb{position:absolute;z-index:4;left:50%;bottom:9px;transform:translateX(-50%);height:17px;display:flex;align-items:center;gap:3px;
+    padding:0 4px;border-radius:5px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .mtb i{display:block;height:6px;border-radius:2px;background:#e7eaef}
+  .mtb i.on{background:#cfe0ff}
+  .mtb .cl{position:relative;width:7px;height:7px;background:#e7eaef;border-radius:2px}
+  .mtb .cl::before,.mtb .cl::after{content:"";position:absolute;left:3px;top:0;width:1px;height:7px;background:#6b7280;transform:rotate(45deg)}
+  .mtb .cl::after{transform:rotate(-45deg)}
+
+  /* old overlap marker */
+  .overlap{position:absolute;z-index:5;right:5px;top:12px;width:62px;height:56px;border:2px dashed #e5484d;border-radius:50%}
+  .overlap2{position:absolute;z-index:5;right:8px;top:32px;width:26px;height:26px;border:2px solid #e5484d;border-radius:50%;
+    background:rgba(229,72,77,.18);display:grid;place-items:center;color:#e5484d;font-size:11px;font-weight:700}
+  .xc{position:absolute;right:12px;top:30px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:6}
+  .xc::before,.xc::after{content:"";position:absolute;left:7px;top:3px;width:1px;height:9px;background:#0f1115;transform:rotate(45deg)}
+  .xc::after{transform:rotate(-45deg)}
+  .tag{position:absolute;z-index:6;font-size:8.5px;padding:2px 6px;border-radius:999px;background:#e5484d;color:#fff;white-space:nowrap}
+  .tag.ok{background:#1a7f37}
+  .tag.blue{background:var(--accent)}
+  .safe{position:absolute;z-index:5;left:0;right:0;height:22px;background:repeating-linear-gradient(135deg,rgba(65,118,230,.16) 0 6px,rgba(65,118,230,.05) 6px 12px);
+    border-bottom:1px dashed rgba(65,118,230,.6)}
+  .safe .lb{position:absolute;left:6px;top:4px;font-size:8px;color:#2a5bb8}
+  .dash{position:absolute;z-index:5;border-left:1px dashed rgba(255,255,255,.5);font-size:8px;color:#fff}
+
+  /* macOS mini */
+  .macdots{position:absolute;left:7px;top:8px;display:flex;gap:3px;z-index:6}
+  .macdots i{width:5px;height:5px;border-radius:50%;background:#ff5f57}
+  .macdots i:nth-child(2){background:#febc2e}.macdots i:nth-child(3){background:#28c840}
+
+  /* narrow dark mini */
+  .mw.dark{background:#1c1d20;border-color:#333}
+  .mw.dark .mcap{background:#141517}
+  .mw.dark .mmenus{color:#9aa1ab}
+  .mw.dark .mwc i{border-color:#9aa1ab}
+  .mw.dark .mside{background:#141517;border-color:#2a2b2f}
+  .mw.dark .mside i{background:#2c2e33}
+  .mw.dark .mmain{background:#1c1d20}
+  .mw.dark .mmain i.l{background:#2c2e33}
+  .mw.dark .mtb{background:#2a2c31;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .mw.dark .mtb i{background:#3d4047}
+  .mw.dark .mtb i.on{background:#3b5f9e}
+  .mw.dark .mimg{background:#111}
+  .narrow .mimg{width:120px;height:74px}
+
+  /* remote panel mini */
+  .rpanel{position:absolute;z-index:6;left:6px;bottom:26px;width:104px;height:86px;border-radius:6px;background:#fff;border:.5px solid rgba(0,0,0,.12);
+    box-shadow:0 8px 20px rgba(0,0,0,.22);padding:6px;display:flex;flex-direction:column;gap:3px}
+  .rpanel .rh{display:flex;align-items:center;gap:3px;font-size:6.5px;color:#61666b}
+  .rpanel .rh i{width:4px;height:4px;border-radius:50%;background:#2ea043}
+  .rpanel .rr{height:5px;border-radius:2px;background:#eef1f5}
+  .zlabel{position:absolute;z-index:7;font-size:8px;padding:2px 6px;border-radius:4px;background:#111;color:#fff;white-space:nowrap}
+
+  /* table card */
+  .spec{width:100%;border-collapse:collapse;font-size:10.5px}
+  .spec th,.spec td{text-align:left;padding:5px 6px;border-bottom:.5px solid rgba(0,0,0,.07);vertical-align:top}
+  .spec th{font-weight:600;color:var(--text3);font-size:10px}
+  .spec td b{font-weight:600;color:var(--text)}
+  .spec code{font-family:Consolas,monospace;font-size:10px;background:#f2f3f5;border-radius:4px;padding:0 4px}
+  .keys{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:10.5px;color:var(--text2)}
+  .keys div{display:flex;align-items:center;gap:6px;height:20px}
+  .keys kbd{font-family:Consolas,monospace;font-size:9.5px;background:#f2f3f5;border:.5px solid rgba(0,0,0,.1);border-radius:4px;padding:1px 5px;color:var(--text)}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="sheet-head">
+    <h1>预览层布局安全区 · 兼容规格</h1>
+    <p>所有预览控件避开 DSH 自己的窗口控件、标题栏与浮层；同一套规则覆盖 Windows / macOS / 全屏 / 窄窗口 / 远程会话</p>
+    <span class="ver">dsh-image-tools v0.2.0 方案 · 2026-11-16</span>
+  </div>
+
+  <div class="grid">
+    <!-- 1. before -->
+    <div class="card">
+      <h2><span class="badge red">旧版问题</span> 右上角 ✕ 与窗口按钮重叠</h2>
+      <div class="demo">
+        <div class="mw">
+          <div class="mcap"><div class="mmenus"><span>文件</span><span>编辑</span><span>查看</span></div>
+            <div class="mwc"><i></i><i></i><i class="c"></i></div></div>
+          <div class="mbody">
+            <div class="mside"><i style="width:80%"></i><i style="width:60%"></i><i style="width:70%"></i><i style="width:52%"></i></div>
+            <div class="mmain"><div class="maskmini"></div><div class="mimg"><i style="width:84%"></i><i style="width:70%"></i><i class="e" style="width:60%"></i><i style="width:74%"></i><i style="width:44%"></i><i style="width:66%"></i></div>
+              <div class="overlap"></div><div class="xc"></div><div class="overlap2">!</div>
+              <div class="tag" style="right:34px;top:58px">两个 ✕ 叠在一起</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="desc">v0.1 的关闭按钮固定在 <code>top:20px/right:20px</code>，正好落在 Windows 原生标题栏按钮下方；点关闭时容易误触窗口关闭，视觉也重复。</p>
+    </div>
+
+    <!-- 2. new windows -->
+    <div class="card">
+      <h2><span class="badge">v0.2</span> 顶部 40px 让给窗口控件</h2>
+      <div class="demo">
+        <div class="mw">
+          <div class="mcap"><div class="mmenus"><span>文件</span><span>编辑</span><span>查看</span></div>
+            <div class="mwc"><i></i><i></i><i class="c"></i></div></div>
+          <div class="mbody">
+            <div class="mside"><i style="width:80%"></i><i style="width:60%"></i><i style="width:70%"></i><i style="width:52%"></i></div>
+            <div class="mmain"><div class="maskmini"></div>
+              <div class="safe"><span class="lb">窗口控件安全区 · 40px（不放置任何预览按钮）</span></div>
+              <div class="mimg" style="top:48px"><i style="width:84%"></i><i style="width:70%"></i><i class="e" style="width:60%"></i><i style="width:74%"></i><i style="width:44%"></i></div>
+              <div class="mtb"><i style="width:8px"></i><i style="width:14px"></i><i style="width:10px"></i><i style="width:12px" class="on"></i><i style="width:10px"></i><i style="width:9px"></i><i class="cl"></i></div>
+              <div class="tag ok" style="left:6px;bottom:30px">控件全部下沉到底部工具条</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="desc">预览不再在顶部放任何可点元素；大图舞台顶部再留 20px，等于 <code>--dsh-frame-overlay-top</code>（Windows = 60px），图像不会被窗口按钮压住。</p>
+    </div>
+
+    <!-- 3. macOS / fullscreen -->
+    <div class="card">
+      <h2><span class="badge grey">跨平台</span> macOS 红绿灯 / 全屏</h2>
+      <div class="demo" style="gap:10px">
+        <div class="mw" style="width:168px;height:196px">
+          <div class="mcap" style="background:#f3f4f6"><div class="macdots"><i></i><i></i><i></i></div></div>
+          <div class="mbody" style="inset:22px 0 0">
+            <div class="mmain"><div class="maskmini"></div>
+              <div class="mimg" style="width:120px;height:80px;top:34px"><i style="width:80%"></i><i style="width:64%"></i><i style="width:70%"></i><i style="width:40%"></i></div>
+              <div class="mtb" style="bottom:8px"><i style="width:8px"></i><i style="width:12px"></i><i style="width:9px" class="on"></i><i style="width:8px"></i><i class="cl"></i></div>
+              <div class="tag blue" style="left:4px;top:28px">左上红绿灯</div>
+            </div>
+          </div>
+        </div>
+        <div class="mw" style="width:168px;height:196px">
+          <div class="mbody" style="inset:0">
+            <div class="mmain"><div class="maskmini"></div>
+              <div class="mimg" style="width:120px;height:96px;top:34px"><i style="width:80%"></i><i style="width:64%"></i><i style="width:70%"></i><i style="width:40%"></i><i style="width:60%"></i></div>
+              <div class="mtb" style="bottom:8px"><i style="width:8px"></i><i style="width:12px"></i><i style="width:9px" class="on"></i><i style="width:8px"></i><i class="cl"></i></div>
+              <div class="tag ok" style="left:4px;top:24px">全屏：20px</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="desc">macOS 用同一套底部控件；红绿灯在左上、全屏无 chrome，安全区分别取 <code>68px</code> 与 <code>20px</code>。不做任何平台判定，只读 DSH 已有的 CSS 变量。</p>
+    </div>
+
+    <!-- 4. narrow dark -->
+    <div class="card">
+      <h2><span class="badge grey">自适应</span> 窄窗口 520px + 深色</h2>
+      <div class="demo">
+        <div class="mw dark narrow" style="width:300px;height:200px">
+          <div class="mcap"><div class="mmenus"><span>文件</span><span>编辑</span></div><div class="mwc"><i></i><i></i><i class="c"></i></div></div>
+          <div class="mbody"><div class="mside"><i style="width:80%"></i><i style="width:60%"></i><i style="width:70%"></i></div>
+            <div class="mmain"><div class="maskmini"></div>
+              <div class="mimg" style="top:34px"><i style="width:82%"></i><i style="width:66%"></i><i style="width:72%"></i><i style="width:40%"></i></div>
+              <div class="mtb" style="bottom:8px;gap:2px"><i style="width:7px"></i><i style="width:7px"></i><i style="width:7px"></i><i style="width:7px" class="on"></i><i style="width:7px"></i><i style="width:7px"></i><i style="width:7px"></i><i class="cl"></i></div>
+              <div class="tag blue" style="left:4px;bottom:30px">图标模式 · 隐藏文件名 / 缩略图条</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="desc">窗口最窄 520px 时工具条只留图标（复制/下载/关闭 + 页码），文件名与缩略图条收起；深色沿用同一套主题 token，不写死颜色。</p>
+    </div>
+
+    <!-- 5. remote deck coexistence -->
+    <div class="card">
+      <h2><span class="badge grey">共存</span> 与 Remote Deck 浮层</h2>
+      <div class="demo">
+        <div class="mw">
+          <div class="mcap"><div class="mmenus"><span>文件</span><span>编辑</span><span>查看</span></div><div class="mwc"><i></i><i></i><i class="c"></i></div></div>
+          <div class="mbody">
+            <div class="mside"><i style="width:80%"></i><i style="width:60%"></i><i style="width:70%"></i></div>
+            <div class="mmain"><div class="maskmini"></div>
+              <div class="mimg" style="top:40px"><i style="width:84%"></i><i style="width:70%"></i><i style="width:60%"></i><i style="width:74%"></i></div>
+              <div class="mtb" style="bottom:9px"><i style="width:8px"></i><i style="width:12px"></i><i style="width:9px" class="on"></i><i style="width:8px"></i><i class="cl"></i></div>
+              <div class="rpanel"><div class="rh"><i></i>远程开发</div><div class="rr" style="width:70%"></div><div class="rr" style="width:88%"></div><div class="rr" style="width:54%"></div></div>
+              <div class="zlabel" style="left:6px;bottom:118px">Remote Deck 快捷面板 z=1001</div>
+              <div class="zlabel" style="right:6px;bottom:34px">预览工具条居中，避开左下 370px</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="desc">Remote Deck 的快捷面板（左下 370px）与对话框层级更高，本方案不去抢 z-index：工具条固定在底部居中，不与其面板区重叠；模态对话框打开时预览自然让位。</p>
+    </div>
+
+    <!-- 6. spec table -->
+    <div class="card">
+      <h2><span class="badge">规格</span> 尺寸与快捷键</h2>
+      <table class="spec">
+        <tr><th>项</th><th>值</th></tr>
+        <tr><td>工具条</td><td>高 <b>48</b> · 底部 <b>22</b> · 圆角 14 · 最大宽度随窗口收缩</td></tr>
+        <tr><td>缩略图条</td><td>缩略图 <b>58×34</b> · 仅组内 ≥2 张且宽度 ≥760 时出现</td></tr>
+        <tr><td>图像舞台</td><td>顶部 <code>--dsh-frame-overlay-top</code> · 底部 126 · 左右 32</td></tr>
+        <tr><td>缩放范围</td><td><b>25% – 800%</b>，默认适配；双击切换适配 ↔ 100%</td></tr>
+      </table>
+      <div class="keys">
+        <div><kbd>滚轮</kbd> 以指针为锚缩放</div>
+        <div><kbd>双击</kbd> 适配 / 100%</div>
+        <div><kbd>拖动</kbd> 放大后平移</div>
+        <div><kbd>←</kbd><kbd>→</kbd> 翻页</div>
+        <div><kbd>Esc</kbd> 关闭预览</div>
+        <div><kbd>Ctrl</kbd>+<kbd>C</kbd> 复制（菜单内）</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
