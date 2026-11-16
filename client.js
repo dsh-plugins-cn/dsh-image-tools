@@ -59,6 +59,7 @@ window.__ModuleLoader__.load({
         'preview.resetZoom': '重置为 100%',
         'preview.prev': '上一张',
         'preview.next': '下一张',
+        'preview.strip': '图片列表',
         'preview.page': '第 {current} / {total} 张',
         'preview.loadFailed': '图片加载失败',
         'preview.retry': '重试',
@@ -91,6 +92,7 @@ window.__ModuleLoader__.load({
         'preview.resetZoom': 'Reset to 100%',
         'preview.prev': 'Previous image',
         'preview.next': 'Next image',
+        'preview.strip': 'Images',
         'preview.page': 'Image {current} of {total}',
         'preview.loadFailed': 'Image failed to load',
         'preview.retry': 'Retry',
@@ -157,6 +159,15 @@ window.__ModuleLoader__.load({
 .dit-preview-retry{height:32px;padding:0 14px;border:.5px solid var(--dsw-alias-border-l2-darkmode-thin);border-radius:9px;background:var(--dsw-specific-input-major);color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px;cursor:pointer}
 .dit-preview-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}
 
+.dit-preview-strip{flex:none;align-self:center;max-width:calc(100% - 32px);display:flex;gap:8px;padding:2px;margin:4px 0 0;overflow-x:auto;scrollbar-width:none}
+.dit-preview-strip::-webkit-scrollbar{display:none}
+.dit-strip-thumb{flex:none;width:58px;height:34px;padding:0;border:1px solid transparent;border-radius:7px;overflow:hidden;background:var(--dsw-alias-bg-layer-1);cursor:pointer}
+.dit-strip-thumb:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dit-strip-thumb:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
+.dit-strip-thumb[aria-current="true"]{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-state-business-primary) 35%,transparent)}
+.dit-strip-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.dit-strip-thumb .dit-spinner{width:12px;height:12px;margin:10px auto}
+@media (max-width:760px){.dit-preview-strip{display:none}}
 .dit-preview-toolbar{flex:none;align-self:center;max-width:calc(100% - 32px);display:flex;align-items:center;gap:2px;height:48px;margin:10px 0 6px;padding:5px 7px;border-radius:14px;background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary);box-shadow:0 0 0 .5px rgba(0,0,0,.1),0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08);white-space:nowrap}
 .dit-tb-btn{display:flex;align-items:center;justify-content:center;gap:7px;height:36px;min-width:36px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer}
 .dit-tb-btn:hover,.dit-tb-btn:focus-visible{background:var(--dsw-alias-interactive-bg-hover);outline:none}
@@ -734,6 +745,59 @@ window.__ModuleLoader__.load({
       )
     }
 
+    // Thumbnails for the preview filmstrip. Each one resolves its own source
+    // through the same loader cache; a missing cache entry loads lazily.
+    function PreviewThumb({ item, current, onSelect }) {
+      const [src, setSrc] = useState(() => {
+        if (item.preview && item.preview.url) return item.preview.url
+        if (item.attachment && item.load && typeof item.load.peek === 'function') {
+          return item.load.peek(item.attachment) || null
+        }
+        return null
+      })
+      useEffect(() => {
+        if (src !== null) return undefined
+        if (item.attachment === undefined || typeof item.load !== 'function') return undefined
+        let live = true
+        Promise.resolve()
+          .then(() => item.load(item.attachment))
+          .then((url) => {
+            if (live && typeof url === 'string' && url !== '') setSrc(url)
+          })
+          .catch(() => {})
+        return () => { live = false }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [item.key])
+      return h(
+        'button',
+        {
+          type: 'button',
+          className: 'dit-strip-thumb',
+          'aria-current': current ? 'true' : undefined,
+          'aria-label': item.name || t('image.alt'),
+          title: item.name || t('image.alt'),
+          onClick: onSelect,
+        },
+        src === null ? h('span', { className: 'dit-spinner' }) : h('img', { src, alt: '' }),
+      )
+    }
+
+    function PreviewStrip({ items, index, onSelect }) {
+      if (items.length < 2) return null
+      return h(
+        'div',
+        { className: 'dit-preview-strip', role: 'tablist', 'aria-label': t('preview.strip') },
+        items.map((item, position) =>
+          h(PreviewThumb, {
+            key: item.key,
+            item,
+            current: position === index,
+            onSelect: () => onSelect(position),
+          }),
+        ),
+      )
+    }
+
     function ImageGallery(props) {
       const images = Array.isArray(props.images) ? props.images : []
       const load = props.loadImage
@@ -748,9 +812,22 @@ window.__ModuleLoader__.load({
       const variant = props.thumbnail ? 'thumbnail' : props.compact || images.length > 1 ? 'tile' : 'single'
 
       const openAt = (clickedIndex, anchor) => {
-        const specs = images
+        let specs = images
+        let index = clickedIndex
+        // User messages render one slot instance per image, so a single-image
+        // slot has to recover its siblings from the conversation snapshot. The
+        // match is by attachment id and stays inside one message.
+        if (images.length === 1 && images[0] && images[0].attachment && Array.isArray(nodes)) {
+          const identifier = images[0].attachment.attachmentId
+          const collected = collectMessageImages(nodes, identifier)
+          if (collected.length > 1) {
+            specs = collected
+            const found = collected.findIndex((image) => image.attachment && image.attachment.attachmentId === identifier)
+            index = found >= 0 ? found : 0
+          }
+        }
         const items = specs.map((image) => itemFromSpec(image, load))
-        store.setPreview({ items, index: Math.max(0, Math.min(items.length - 1, clickedIndex)), anchor })
+        store.setPreview({ items, index: Math.max(0, Math.min(items.length - 1, index)), anchor })
       }
 
       return h(
@@ -1102,6 +1179,7 @@ window.__ModuleLoader__.load({
                     },
               }),
         ),
+        items.length > 1 ? h(PreviewStrip, { items, index, onSelect: goTo }) : null,
         h(
           'div',
           { className: 'dit-preview-toolbar', onMouseDown: (event) => event.stopPropagation() },

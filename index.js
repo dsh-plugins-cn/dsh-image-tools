@@ -3,6 +3,6 @@
  * this row only loads the client module and carries the build stamp the
  * installer checks against package.json.
  */
-export const BUILD = '0.2.0'
+export const BUILD = '0.3.0'
 
 export function apply() {}

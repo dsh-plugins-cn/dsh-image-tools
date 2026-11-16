@@ -111,8 +111,8 @@ const previewState = async () => evaluate(`(() => {
   const image = document.querySelector('.dit-preview-image')
   const buttons = [...document.querySelectorAll('.dit-preview button')].map((node) => {
     const rect = node.getBoundingClientRect()
-    return { label: (node.getAttribute('aria-label') || node.textContent || '').trim().slice(0, 30), top: Math.round(rect.top), bottom: Math.round(rect.bottom), left: Math.round(rect.left) }
-  })
+    return { label: (node.getAttribute('aria-label') || node.textContent || '').trim().slice(0, 30), top: Math.round(rect.top), bottom: Math.round(rect.bottom), left: Math.round(rect.left), visible: rect.width > 0 && rect.height > 0 }
+  }).filter((button) => button.visible)
   const style = image ? getComputedStyle(image) : null
   const matrix = style ? style.transform : null
   const pct = document.querySelector('.dit-tb-pct') ? document.querySelector('.dit-tb-pct').textContent.trim() : null
@@ -126,6 +126,8 @@ const previewState = async () => evaluate(`(() => {
     imageTransform: matrix,
     pct,
     page,
+    stripCount: document.querySelectorAll('.dit-strip-thumb').length,
+    stripActive: [...document.querySelectorAll('.dit-strip-thumb')].findIndex((node) => node.getAttribute('aria-current') === 'true'),
     buttons,
     minButtonTop: buttons.length ? Math.min(...buttons.map((button) => button.top)) : null,
     viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -228,6 +230,7 @@ const gallery = await evaluate(`(() => {
   }
 })()`)
 check('gallery-rendered', gallery.galleries >= 1 && gallery.images >= 1, gallery)
+if (fixtures.length > 1) check('gallery-multi', gallery.images >= fixtures.length && gallery.tiles >= fixtures.length, gallery)
 report.fixtures = fixtures.map((file) => ({
   file: file.split(/[\\\\/]/).pop(),
   bytes: statSync(file).size,
@@ -259,6 +262,10 @@ if (state !== null) {
   check('stage-clears-caption', state.stageTop !== null && state.stageTop >= 60, { stageTop: state.stageTop, safeTop: state.safeTop })
   check('toolbar-inside-viewport', state.toolbarBottom !== null && state.toolbarBottom <= state.viewport.height, { toolbarBottom: state.toolbarBottom, viewport: state.viewport })
   check('preview-has-image', state.imageRect !== null, state.imageRect)
+  if (fixtures.length > 1) {
+    check('pager-visible', typeof state.page === 'string' && state.page.includes('1 / ' + fixtures.length), state.page)
+    check('filmstrip-count', state.stripCount === fixtures.length, state.stripCount)
+  }
   report.fit = state
   await capture('10-preview-fit.png')
 }
@@ -308,6 +315,113 @@ if (center) {
   await pressKey('0', 'Digit0', 48)
   const keyReset = await previewState()
   check('keyboard-fit', keyReset !== null && keyReset.imageTransform === report.fit?.imageTransform, { pct: keyReset?.pct })
+}
+
+// Multi-image paging (same message): user messages render one slot instance
+// per attachment, so this also covers the conversation-snapshot collection.
+if (fixtures.length > 1) {
+  const nextButton = await pointOfPreviewButton('下一张')
+  if (nextButton) {
+    await clickPoint(nextButton)
+    await sleep(600)
+    const second = await previewState()
+    check('pager-next', second !== null && typeof second.page === 'string' && second.page.includes('2 / 3'), second?.page)
+    check('strip-tracks-page', second !== null && second.stripActive === 1, second?.stripActive)
+    await capture('20-paging-next.png')
+  } else {
+    check('pager-next-button', false, 'missing')
+  }
+
+  // Navigating away from a zoomed image returns to fit.
+  const centerOnImage = await evaluate(`(() => {
+    const image = document.querySelector('.dit-preview-image')
+    if (!image) return null
+    const rect = image.getBoundingClientRect()
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+  })()`)
+  if (centerOnImage) {
+    await mouse('mouseMoved', centerOnImage.x, centerOnImage.y)
+    await mouse('mouseWheel', centerOnImage.x, centerOnImage.y, { deltaY: -240 })
+    await sleep(400)
+    const zoomedBeforePage = await previewState()
+    const nextAgain = await pointOfPreviewButton('下一张')
+    if (nextAgain) {
+      await clickPoint(nextAgain)
+      await sleep(700)
+      const afterPage = await previewState()
+      check('page-resets-zoom', afterPage !== null && afterPage.imageTransform === report.fit?.imageTransform, { before: zoomedBeforePage?.pct, after: afterPage?.pct })
+    }
+  }
+
+  await pressKey('ArrowRight', 'ArrowRight', 39)
+  const third = await previewState()
+  check('arrow-next', third !== null && typeof third.page === 'string' && third.page.includes('3 / 3'), third?.page)
+  await pressKey('ArrowRight', 'ArrowRight', 39)
+  const stay = await previewState()
+  check('no-wrap', stay !== null && typeof stay.page === 'string' && stay.page.includes('3 / 3'), stay?.page)
+  await pressKey('ArrowLeft', 'ArrowLeft', 37)
+  const back = await previewState()
+  check('arrow-prev', back !== null && typeof back.page === 'string' && back.page.includes('2 / 3'), back?.page)
+
+  const firstStrip = await evaluate(`(() => {
+    const thumb = document.querySelectorAll('.dit-strip-thumb')[0]
+    if (!thumb) return null
+    const rect = thumb.getBoundingClientRect()
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+  })()`)
+  if (firstStrip) {
+    await clickPoint(firstStrip)
+    await sleep(500)
+    const firstPage = await previewState()
+    check('strip-click', firstPage !== null && typeof firstPage.page === 'string' && firstPage.page.includes('1 / 3'), firstPage?.page)
+  }
+
+  // Opening from the third tile starts the pager on that image.
+  await pressKey('Escape', 'Escape', 27)
+  await sleep(350)
+  const thirdTile = await evaluate(`(() => {
+    const thumbs = [...document.querySelectorAll('.dit-frame .dit-thumb')]
+    if (thumbs.length < 3) return null
+    const rect = thumbs[2].getBoundingClientRect()
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+  })()`)
+  if (thirdTile) {
+    await clickPoint(thirdTile)
+    await sleep(800)
+    const openedThird = await previewState()
+    check('open-from-tile-index', openedThird !== null && typeof openedThird.page === 'string' && openedThird.page.includes('3 / 3'), openedThird?.page)
+    await capture('21-paging-third.png')
+    await pressKey('Escape', 'Escape', 27)
+    await sleep(350)
+  } else {
+    check('third-tile', false, 'missing')
+  }
+
+  // Copy/download below must read the first fixture.
+  const firstTile = await evaluate(`(() => {
+    const thumbs = [...document.querySelectorAll('.dit-frame .dit-thumb')]
+    if (thumbs.length === 0) return null
+    const rect = thumbs[0].getBoundingClientRect()
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+  })()`)
+  if (firstTile) {
+    await clickPoint(firstTile)
+    await sleep(800)
+  }
+
+  // Collector: assistant blocks, tool content and user content each expose
+  // their own message images in source order.
+  const collector = await evaluate(`(() => {
+    const collect = globalThis.__DSH_IMAGE_TOOLS__ && globalThis.__DSH_IMAGE_TOOLS__.collectMessageImages
+    if (typeof collect !== 'function') return null
+    const nodes = [
+      { kind: 'assistant', blocks: [{ kind: 'image', attachment: { attachmentId: 'A' } }, { kind: 'text', text: 'x' }, { kind: 'image', attachment: { attachmentId: 'B' } }] },
+      { kind: 'tool-result', content: [{ type: 'image', attachment: { attachmentId: 'C' } }] },
+      { kind: 'user', content: [{ type: 'image', attachment: { attachmentId: 'D' } }, { type: 'text', text: '' }] },
+    ]
+    return { assistant: collect(nodes, 'B').length, tool: collect(nodes, 'C').length, user: collect(nodes, 'D').length, missing: collect(nodes, 'Z').length }
+  })()`)
+  check('collector-array-nodes', collector !== null && collector.assistant === 2 && collector.tool === 1 && collector.user === 1 && collector.missing === 0, collector)
 }
 
 // Copy through the toolbar.
@@ -381,6 +495,10 @@ const failed = failures.length > 0
 console.log(JSON.stringify({ ok: !failed, failures, steps: report.steps }, null, 2))
 socket.close()
 process.exit(failed ? 1 : 0)
+
+
+
+
 
 
 
