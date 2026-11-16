@@ -1,4 +1,4 @@
-# v0.3.0 验收记录
+﻿# v0.3.0 验收记录
 
 - 包：`dsh-image-tools@0.3.0`
 - 环境：隔离 profile `imagecheck`（`E:\ai-workspace\Deepseek Harness\.dsh`），独立 host `http://127.0.0.1:3099`，headless Chrome `1440×900 @2x`
@@ -56,6 +56,7 @@
 2. 本轮未重启用户的 `desktop` DSH 实例；桌面真实窗口与远程会话观感需在用户重启后复核。
 3. 未建立真实远程主机会话：远程链路自 v0.1.0 起未改动（附件仍为本机附件、预览为纯浏览器渲染），本轮回归覆盖了插件与附件/blob 的全部代码路径；远程实测建议在桌面重启后用一条远程会话图复核。
 4. 窄窗只覆盖 760px；520px 最小宽度未截图。
+5. 助手连续图片 / 工具结果图片走 slot 数组路径，本机没有可安全构造的助手多图会话；该路径由会话快照收集器对 assistant/tool 节点的断言覆盖，用户消息多图为真实端到端用例。
 5. 验证过程中创建的测试会话可在会话列表中删除。
 
 ## 复跑
@@ -75,3 +76,4 @@ node scripts/verify-preview.mjs "<url>" docs/verification/v0.3.0 <downloadDir> "
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Rollback -Profile imagecheck
 ```
+
