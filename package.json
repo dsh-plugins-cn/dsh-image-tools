@@ -1,6 +1,6 @@
 {
   "name": "dsh-image-tools",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": false,
   "type": "module",
   "description": "Copy or download any image shown in a DeepSeek Harness conversation, including pasted screenshots, without losing the original bytes.",

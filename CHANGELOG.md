@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+- **Markdown images now use the plugin preview too.** Assistant text and tool
+  output can embed images through Markdown (`![..](..)`); those are rendered by
+  the shipped markdown renderer with the official lightbox and have no Slot.
+  A click bridge now opens the plugin preview (zoom/pan, copy, download,
+  paging across the images of the same markdown block) instead.
+- The bridge reads only the clicked image and the image buttons of its own
+  markdown block at click time; it never edits the shipped DOM and lets the
+  click through when the pattern is absent, so a newer DSH keeps the official
+  preview instead of breaking.
+- Focus returns to the clicked markdown image button on close.
+
 ## 0.3.0
 
 - **Same-message image paging.** When a message holds several images the

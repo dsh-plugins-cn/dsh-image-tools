@@ -1285,6 +1285,89 @@ window.__ModuleLoader__.load({
       )
     }
 
+    // ------------------------------------------------- markdown image bridge
+    //
+    // Markdown images (agent-written `![..](..)` inside assistant text or tool
+    // output) are rendered by the shipped markdown renderer with the official
+    // lightbox and have no Slot to replace. The bridge intercepts the click on
+    // the official zoom-in button only, reads the clicked image (and its
+    // siblings inside the same markdown block) and opens the plugin preview
+    // instead. It never edits the shipped DOM and simply lets the click
+    // through when the pattern is not found (older/newer DSH builds).
+    function collectMarkdownItems(markdown, clickedButton) {
+      const buttons = []
+      for (const candidate of markdown.querySelectorAll('button')) {
+        const image = candidate.querySelector('img')
+        if (!(image instanceof HTMLImageElement)) continue
+        if (image.naturalWidth < 160 || image.naturalHeight < 120) continue
+        let cursor = ''
+        try { cursor = getComputedStyle(candidate).cursor } catch (error) { cursor = '' }
+        if (cursor !== 'zoom-in') continue
+        const src = image.currentSrc || image.src
+        if (typeof src !== 'string' || src === '') continue
+        buttons.push({ button: candidate, image, src })
+      }
+      if (buttons.length === 0) return null
+      const index = buttons.findIndex((entry) => entry.button === clickedButton)
+      if (index < 0) return null
+      const items = buttons.map((entry) => {
+        const alt = (entry.image.getAttribute('alt') || '').trim()
+        const tail = (() => {
+          try {
+            const url = new URL(entry.src)
+            return decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '')
+          } catch (error) {
+            return ''
+          }
+        })()
+        const name = alt || tail || 'image'
+        return {
+          key: 'markdown:' + entry.src,
+          preview: {
+            url: entry.src,
+            name,
+            width: entry.image.naturalWidth,
+            height: entry.image.naturalHeight,
+          },
+          name,
+          mediaType: '',
+          width: entry.image.naturalWidth,
+          height: entry.image.naturalHeight,
+          bytes: undefined,
+          load: undefined,
+        }
+      })
+      return { items, index }
+    }
+
+    function installMarkdownBridge() {
+      const onClick = (event) => {
+        if (event.defaultPrevented) return
+        if (event.button !== undefined && event.button !== 0) return
+        const state = store.get()
+        if (state.preview !== null || state.menu !== null) return
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : []
+        let button = null
+        for (const node of path) {
+          if (node instanceof HTMLElement && node.tagName === 'BUTTON') { button = node; break }
+        }
+        if (button === null) return
+        if (button.closest('.dit-gallery, .dit-preview, .dit-layer, .dit-menu, .dit-menu-backdrop')) return
+        const markdown = button.closest('[class*="markdown"]')
+        if (!(markdown instanceof HTMLElement)) return
+        const image = button.querySelector('img')
+        if (!(image instanceof HTMLImageElement)) return
+        if (image.naturalWidth < 160 || image.naturalHeight < 120) return
+        const collected = collectMarkdownItems(markdown, button)
+        if (collected === null) return
+        event.preventDefault()
+        event.stopPropagation()
+        store.setPreview({ items: collected.items, index: collected.index, anchor: button })
+      }
+      window.addEventListener('click', onClick, true)
+      return () => window.removeEventListener('click', onClick, true)
+    }
+
     // --------------------------------------------------------------- overlay
 
     function Overlay() {
@@ -1308,7 +1391,7 @@ window.__ModuleLoader__.load({
         const anchor = lastAnchor.current
         lastAnchor.current = null
         if (!(anchor instanceof HTMLElement) || !anchor.isConnected) return
-        const target = anchor.querySelector('.dit-thumb')
+        const target = anchor.querySelector('.dit-thumb') || (anchor instanceof HTMLElement && anchor.matches('button') ? anchor : null)
         if (target instanceof HTMLElement) target.focus()
       }, [state.preview, state.menu])
 
@@ -1493,6 +1576,7 @@ window.__ModuleLoader__.load({
 
         const diagnostics = { slots: {}, collectMessageImages }
         globalThis.__DSH_IMAGE_TOOLS__ = diagnostics
+        ctx.effect(installMarkdownBridge, 'dsh-image-tools: markdown image bridge')
         ctx.effect(() => () => {
           store.reset()
           if (globalThis.__DSH_IMAGE_TOOLS__ === diagnostics) delete globalThis.__DSH_IMAGE_TOOLS__

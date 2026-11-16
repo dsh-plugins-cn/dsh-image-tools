@@ -1,0 +1,112 @@
+{
+  "steps": [
+    {
+      "name": "session-opened",
+      "ok": true,
+      "detail": "<local session>"
+    },
+    {
+      "name": "markdown-images-found",
+      "ok": true,
+      "detail": {
+        "count": 2,
+        "srcs": [
+          "http://127.0.0.1:3099/ap",
+          "http://127.0.0.1:3099/ap"
+        ]
+      }
+    },
+    {
+      "name": "markdown-opens-plugin-preview",
+      "ok": true,
+      "detail": {
+        "pluginPreview": true,
+        "dialogClass": "dit-preview",
+        "toolbarButtons": [
+          "上一张",
+          "下一张",
+          "缩小",
+          "重置为 100%",
+          "放大",
+          "适配窗口",
+          "复制图片",
+          "下载原图",
+          "关闭Esc"
+        ],
+        "pct": "81%",
+        "page": "第 1 / 2 张",
+        "strip": 2,
+        "transform": "matrix(0.812222, 0, 0, 0.812222, 103.2, 0)"
+      }
+    },
+    {
+      "name": "markdown-toolbar",
+      "ok": true,
+      "detail": [
+        "上一张",
+        "下一张",
+        "缩小",
+        "重置为 100%",
+        "放大",
+        "适配窗口",
+        "复制图片",
+        "下载原图",
+        "关闭Esc"
+      ]
+    },
+    {
+      "name": "markdown-paging",
+      "ok": true,
+      "detail": {
+        "strip": 2,
+        "markdown": 2
+      }
+    },
+    {
+      "name": "screenshot:30-markdown-preview.png",
+      "ok": true
+    },
+    {
+      "name": "markdown-wheel-zoom",
+      "ok": true,
+      "detail": {
+        "before": "81%",
+        "after": "97%"
+      }
+    },
+    {
+      "name": "screenshot:31-markdown-zoom.png",
+      "ok": true
+    },
+    {
+      "name": "markdown-copy-toast",
+      "ok": true,
+      "detail": "已复制图片到剪贴板"
+    },
+    {
+      "name": "markdown-download",
+      "ok": true,
+      "detail": [
+        {
+          "bytes": 158762,
+          "sha256": "97a1b722f67c7d03e30c557a1403ff8e65fb82a62ddb27d34b888793286def1e"
+        }
+      ]
+    },
+    {
+      "name": "markdown-escape-closes",
+      "ok": true
+    }
+  ],
+  "clipboard": [
+    [
+      "image/png"
+    ]
+  ],
+  "downloaded": [
+    {
+      "bytes": 158762,
+      "sha256": "97a1b722f67c7d03e30c557a1403ff8e65fb82a62ddb27d34b888793286def1e"
+    }
+  ]
+}
