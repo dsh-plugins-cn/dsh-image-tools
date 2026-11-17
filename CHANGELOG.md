@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0
+
+- **Paging now spans the whole conversation, across turns.** A session-wide
+  image index is built from the loaded ChatSnapshot in transcript order:
+  user-content images, assistant structured images, assistant Markdown images
+  (`![..](..)` in text), and tool-result images. Clicking any image opens the
+  pager on that image with `n / total` covering every turn.
+- Dedupe by attachment id / absolute URL so an echoed screenshot is paged once.
+- Markdown click bridge now opens the same session-wide index instead of only
+  the images of one markdown block.
+- The thumbnail strip mounts a nine-thumbnail window around the current image,
+  so a long conversation index does not load every thumbnail at once.
+- Scope note: the index covers the session window DSH has loaded; older turns
+  appear after the transcript loads them.
+
 ## 0.4.0
 
 - **Markdown images now use the plugin preview too.** Assistant text and tool

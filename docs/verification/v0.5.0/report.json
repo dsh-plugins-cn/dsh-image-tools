@@ -1,0 +1,163 @@
+{
+  "steps": [
+    {
+      "name": "session-opened",
+      "ok": true,
+      "detail": "<local multi-turn session>"
+    },
+    {
+      "name": "markdown-images-available",
+      "ok": true,
+      "detail": {
+        "markdownCount": 2
+      }
+    },
+    {
+      "name": "markdown-candidates",
+      "ok": true,
+      "detail": "<redacted filenames>"
+    },
+    {
+      "name": "preview-opens",
+      "ok": true,
+      "detail": {
+        "text": "第 16 / 33 张",
+        "current": 16,
+        "total": 33,
+        "src": "esign/v0.2/03-preview-paging.png",
+        "strip": 9,
+        "preview": true,
+        "stateText": null,
+        "loaderAvailable": true,
+        "sessionsAvailable": true,
+        "kinds": {
+          "total": 33,
+          "attachment": 24,
+          "markdown": 9
+        },
+        "dialogs": 1,
+        "bridgeCount": 1,
+        "menus": 0,
+        "nextHit": {
+          "hit": "svg.[object SVGAnimatedString]",
+          "isButton": true
+        }
+      }
+    },
+    {
+      "name": "entry-index",
+      "ok": true,
+      "detail": {
+        "expected": 15,
+        "current": 16
+      }
+    },
+    {
+      "name": "conversation-kinds",
+      "ok": true,
+      "detail": {
+        "total": 33,
+        "attachment": 24,
+        "markdown": 9
+      }
+    },
+    {
+      "name": "pager-uses-conversation-total",
+      "ok": true,
+      "detail": {
+        "page": 33,
+        "kinds": {
+          "total": 33,
+          "attachment": 24,
+          "markdown": 9
+        }
+      }
+    },
+    {
+      "name": "next-across-turns-1",
+      "ok": true,
+      "detail": {
+        "before": {
+          "current": 16,
+          "src": "esign/v0.2/03-preview-paging.png"
+        },
+        "after": {
+          "current": 17,
+          "src": "s/design/v0.2/04-compat-spec.png"
+        }
+      }
+    },
+    {
+      "name": "next-across-turns-2",
+      "ok": true,
+      "detail": {
+        "before": {
+          "current": 17,
+          "src": "s/design/v0.2/04-compat-spec.png"
+        },
+        "after": {
+          "current": 18,
+          "src": "esign/v0.2/05-remote-session.png"
+        }
+      }
+    },
+    {
+      "name": "next-across-turns-3",
+      "ok": true,
+      "detail": {
+        "before": {
+          "current": 18,
+          "src": "esign/v0.2/05-remote-session.png"
+        },
+        "after": {
+          "current": 19,
+          "src": "0d2b-2a9d-4657-acbb-71dc3f325d98"
+        }
+      }
+    },
+    {
+      "name": "strip-window",
+      "ok": true,
+      "detail": {
+        "strip": 9,
+        "total": 33
+      }
+    },
+    {
+      "name": "attachment-page-loads",
+      "ok": true,
+      "detail": {
+        "text": "第 1 / 33 张",
+        "current": 1,
+        "total": 33,
+        "src": ".0.0.1:3099/mockup-chat-menu.png",
+        "strip": 9,
+        "preview": true,
+        "stateText": null,
+        "loaderAvailable": true,
+        "sessionsAvailable": true,
+        "kinds": {
+          "total": 33,
+          "attachment": 24,
+          "markdown": 9
+        },
+        "dialogs": 1,
+        "bridgeCount": 1,
+        "menus": 0,
+        "nextHit": {
+          "hit": "svg.[object SVGAnimatedString]",
+          "isButton": true
+        }
+      }
+    },
+    {
+      "name": "different-entry-index",
+      "ok": true,
+      "detail": {
+        "expected": 14,
+        "first": 16,
+        "second": 15
+      }
+    }
+  ]
+}

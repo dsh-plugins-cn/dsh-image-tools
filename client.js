@@ -488,6 +488,220 @@ window.__ModuleLoader__.load({
       return []
     }
 
+    // ------------------------------------------------- conversation image index
+
+    // Latest ChatSnapshot nodes captured by a mounted gallery; the markdown
+    // bridge has no React hook seat, so it reads this module-level reference.
+    let latestChatNodes
+    let latestImageLoader
+    let latestLoaderSession
+    let latestSessionId
+    let clientSessions
+    let clientCtx
+    let bridgeActivations = 0
+    const attachmentUrlCache = new Map()
+
+    function currentSessionsService() {
+      if (clientSessions) return clientSessions
+      if (clientCtx && typeof clientCtx.get === 'function') {
+        try { clientSessions = clientCtx.get('sessions') } catch (error) { clientSessions = undefined }
+      }
+      return clientSessions
+    }
+
+    /**
+     * Loader for preview items that are not backed by a mounted gallery (the
+     * markdown bridge can page into attachments from other turns). Prefers the
+     * slot-provided loader; otherwise reads the attachment through the Client
+     * sessions service with the current session's permission scope.
+     */
+    function bridgeImageLoader() {
+      if (typeof latestImageLoader === 'function' && latestLoaderSession !== undefined && latestLoaderSession === latestSessionId) {
+        return latestImageLoader
+      }
+      const sessions = currentSessionsService()
+      const sessionId = latestSessionId
+      if (!sessions || typeof sessions.binding !== 'function' || typeof sessionId !== 'string') return undefined
+      let binding
+      try { binding = sessions.binding(sessionId) } catch (error) { binding = undefined }
+      const session = binding && binding.session
+      if (!session || typeof session.readAttachment !== 'function') return undefined
+      const load = async (attachment) => {
+        if (!attachment || typeof attachment.attachmentId !== 'string') throw new Error('BAD_ATTACHMENT')
+        const cached = attachmentUrlCache.get(attachment.attachmentId)
+        if (typeof cached === 'string') return cached
+        const result = await session.readAttachment(attachment)
+        if (!result || result.ok !== true || !result.value) throw new Error('READ_FAILED')
+        const mediaType = (result.value.attachment && result.value.attachment.mediaType)
+          || attachment.mediaType || 'application/octet-stream'
+        const url = URL.createObjectURL(new Blob([result.value.data], { type: mediaType }))
+        attachmentUrlCache.set(attachment.attachmentId, url)
+        return url
+      }
+      load.peek = (attachment) => (attachment ? attachmentUrlCache.get(attachment.attachmentId) : undefined)
+      return load
+    }
+
+    const MARKDOWN_IMAGE = /!\[([^\]]*)\]\(\s*<?([^\s)>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g
+
+    function nameFromUrl(value) {
+      try {
+        const url = new URL(value, document.baseURI)
+        return decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '') || ''
+      } catch (error) {
+        return ''
+      }
+    }
+
+    function markdownImageRefs(text) {
+      const out = []
+      if (typeof text !== 'string' || text === '') return out
+      // A fenced code block only demonstrates markdown; it is not a rendered
+      // image, so it must not join the conversation image index.
+      const source = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '')
+      MARKDOWN_IMAGE.lastIndex = 0
+      let match
+      while ((match = MARKDOWN_IMAGE.exec(source)) !== null) {
+        const alt = (match[1] || '').trim()
+        const destination = (match[2] || '').trim()
+        if (destination === '') continue
+        let url
+        try { url = new URL(destination, document.baseURI).href } catch (error) { continue }
+        out.push({ url, name: alt, raw: destination })
+      }
+      return out
+    }
+
+    function blockImageOf(block) {
+      if (!block || typeof block !== 'object') return undefined
+      if (block.kind === 'image') return block.attachment
+      if (block.type === 'image') return block.attachment
+      return undefined
+    }
+
+    function blockTextOf(block) {
+      if (!block || typeof block !== 'object') return ''
+      if (block.kind === 'text' && typeof block.text === 'string') return block.text
+      if (block.type === 'text' && typeof block.text === 'string') return block.text
+      if (typeof block.value === 'string' && block.type === 'text') return block.value
+      return ''
+    }
+
+    /**
+     * Flatten every image of the loaded conversation into one ordered index:
+     * user content, assistant blocks (structured images and markdown images in
+     * text) and tool-result content. Dedupe by attachment id / absolute URL so
+     * an echoed screenshot is not paged twice.
+     */
+    function collectConversationImages(nodes) {
+      if (!Array.isArray(nodes)) return []
+      const out = []
+      const seen = new Set()
+      const pushAttachment = (attachment) => {
+        if (!attachment || typeof attachment.attachmentId !== 'string' || attachment.attachmentId === '') return
+        const key = 'attachment:' + attachment.attachmentId
+        if (seen.has(key)) return
+        seen.add(key)
+        out.push({ kind: 'attachment', attachment, name: attachment.name || '' })
+      }
+      const pushMarkdown = (ref) => {
+        if (ref.url === '') return
+        const key = 'markdown:' + ref.url
+        if (seen.has(key)) return
+        seen.add(key)
+        out.push({ kind: 'markdown', url: ref.url, name: ref.name || nameFromUrl(ref.url), raw: ref.raw || ref.url })
+      }
+      for (const node of nodes) {
+        if (!node || typeof node !== 'object') continue
+        const blocks = node.kind === 'assistant' && Array.isArray(node.blocks)
+          ? node.blocks
+          : Array.isArray(node.content) ? node.content : []
+        for (const block of blocks) {
+          const attachment = blockImageOf(block)
+          if (attachment) { pushAttachment(attachment); continue }
+          const text = blockTextOf(block)
+          if (text !== '') for (const ref of markdownImageRefs(text)) pushMarkdown(ref)
+        }
+      }
+      return out
+    }
+
+    function previewItemFromEntry(entry, load) {
+      if (entry.kind === 'attachment') return itemFromSpec({ attachment: entry.attachment }, load)
+      const name = entry.name || nameFromUrl(entry.url) || 'image'
+      return {
+        key: 'markdown:' + entry.url,
+        preview: { url: entry.url, name },
+        name,
+        mediaType: '',
+        width: undefined,
+        height: undefined,
+        bytes: undefined,
+        load: undefined,
+      }
+    }
+
+    function sameImageUrl(left, right) {
+      if (typeof left !== 'string' || typeof right !== 'string') return false
+      if (left === right) return true
+      try {
+        const a = new URL(left, document.baseURI)
+        const b = new URL(right, document.baseURI)
+        return a.pathname === b.pathname && a.search === b.search
+      } catch (error) {
+        return false
+      }
+    }
+
+    /** Last path segment; recognizes the generic file endpoint's `path` param. */
+    function imageBasename(value) {
+      if (typeof value !== 'string' || value === '') return ''
+      try {
+        const url = new URL(value, document.baseURI)
+        if (url.pathname.endsWith('/api/file')) {
+          const path = url.searchParams.get('path') || ''
+          return (path.split(/[\\/]/).filter(Boolean).pop() || '').toLowerCase()
+        }
+        return decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '').toLowerCase()
+      } catch (error) {
+        return String(value).split(/[\\/]/).filter(Boolean).pop().toLowerCase()
+      }
+    }
+
+    function rawBasename(value) {
+      if (typeof value !== 'string' || value === '') return ''
+      return value.split(/[\\/]/).filter(Boolean).pop().toLowerCase()
+    }
+
+    /**
+     * Locate the clicked Markdown image in the conversation index. The shipped
+     * renderer rewrites relative/absolute file destinations into
+     * `/api/file?path=...`, so an exact URL match is not always possible; fall
+     * back to a unique basename (then alt text) match.
+     */
+    function findConversationMarkdownIndex(conversation, src, alt) {
+      const direct = conversation.findIndex((entry) => entry.kind === 'markdown' && sameImageUrl(entry.url, src))
+      if (direct >= 0) return direct
+      const basename = imageBasename(src) || rawBasename(src)
+      if (basename !== '') {
+        const matches = []
+        conversation.forEach((entry, index) => {
+          if (entry.kind !== 'markdown') return
+          if (imageBasename(entry.url) === basename || rawBasename(entry.raw) === basename) matches.push(index)
+        })
+        if (matches.length > 0) return matches[matches.length - 1]
+      }
+      if (typeof alt === 'string' && alt.trim() !== '') {
+        const needle = alt.trim()
+        const matches = []
+        conversation.forEach((entry, index) => {
+          if (entry.kind === 'markdown' && entry.name === needle) matches.push(index)
+        })
+        if (matches.length > 0) return matches[matches.length - 1]
+      }
+      return -1
+    }
+
     // ---------------------------------------------------------------- icons
 
     function CopyIcon() {
@@ -784,15 +998,20 @@ window.__ModuleLoader__.load({
 
     function PreviewStrip({ items, index, onSelect }) {
       if (items.length < 2) return null
+      // The conversation index can be long; only a window of thumbnails is
+      // mounted (and therefore only those images are loaded as thumbnails).
+      const limit = 9
+      const start = items.length <= limit ? 0 : Math.max(0, Math.min(items.length - limit, index - 4))
+      const visible = items.slice(start, start + limit)
       return h(
         'div',
         { className: 'dit-preview-strip', role: 'tablist', 'aria-label': t('preview.strip') },
-        items.map((item, position) =>
+        visible.map((item, position) =>
           h(PreviewThumb, {
             key: item.key,
             item,
-            current: position === index,
-            onSelect: () => onSelect(position),
+            current: start + position === index,
+            onSelect: () => onSelect(start + position),
           }),
         ),
       )
@@ -807,16 +1026,32 @@ window.__ModuleLoader__.load({
       const useChatHook = typeof useChat === 'function' ? useChat : () => undefined
       const chat = useChatHook((snapshot) => snapshot)
       const nodes = chat && chat.legacy && Array.isArray(chat.legacy.nodes) ? chat.legacy.nodes : undefined
+      latestChatNodes = nodes
+      latestImageLoader = load
+      latestLoaderSession = props.sessionId
 
       if (images.length === 0) return null
       const variant = props.thumbnail ? 'thumbnail' : props.compact || images.length > 1 ? 'tile' : 'single'
 
       const openAt = (clickedIndex, anchor) => {
+        const clicked = images[clickedIndex]
+        // Whole-conversation index: every image across turns, in transcript
+        // order. The clicked attachment id locates its page.
+        if (clicked && clicked.attachment && Array.isArray(nodes)) {
+          const identifier = clicked.attachment.attachmentId
+          const conversation = collectConversationImages(nodes)
+          const found = conversation.findIndex((entry) => entry.kind === 'attachment'
+            && entry.attachment.attachmentId === identifier)
+          if (found >= 0 && conversation.length > 1) {
+            const items = conversation.map((entry) => previewItemFromEntry(entry, load))
+            store.setPreview({ items, index: found, anchor })
+            return
+          }
+        }
+        // A local submission echo (or a snapshot without the attachment) falls
+        // back to the images of this group.
         let specs = images
         let index = clickedIndex
-        // User messages render one slot instance per image, so a single-image
-        // slot has to recover its siblings from the conversation snapshot. The
-        // match is by attachment id and stays inside one message.
         if (images.length === 1 && images[0] && images[0].attachment && Array.isArray(nodes)) {
           const identifier = images[0].attachment.attachmentId
           const collected = collectMessageImages(nodes, identifier)
@@ -843,6 +1078,17 @@ window.__ModuleLoader__.load({
           }),
         ),
       )
+    }
+
+    // A session header seat that only mirrors the ChatSnapshot into the module
+    // scope: Markdown-only sessions have no gallery mount, and the bridge still
+    // needs the conversation image index.
+    function ConversationImageIndexTap(props) {
+      const useChat = typeof props.useChat === 'function' ? props.useChat : () => undefined
+      const chat = useChat((snapshot) => snapshot)
+      latestChatNodes = chat && chat.legacy && Array.isArray(chat.legacy.nodes) ? chat.legacy.nodes : undefined
+      if (typeof props.sessionId === 'string') latestSessionId = props.sessionId
+      return null
     }
 
     // --------------------------------------------------------------- preview
@@ -1345,7 +1591,8 @@ window.__ModuleLoader__.load({
         if (event.defaultPrevented) return
         if (event.button !== undefined && event.button !== 0) return
         const state = store.get()
-        if (state.preview !== null || state.menu !== null) return
+        if (state.preview !== null) return
+        if (state.menu !== null) store.closeMenu()
         const path = typeof event.composedPath === 'function' ? event.composedPath() : []
         let button = null
         for (const node of path) {
@@ -1358,10 +1605,30 @@ window.__ModuleLoader__.load({
         const image = button.querySelector('img')
         if (!(image instanceof HTMLImageElement)) return
         if (image.naturalWidth < 160 || image.naturalHeight < 120) return
+        const src = image.currentSrc || image.src
+        // Prefer the whole-conversation index: the same Markdown block plus
+        // every image from other turns before and after it.
+        if (Array.isArray(latestChatNodes)) {
+          const conversation = collectConversationImages(latestChatNodes)
+          if (conversation.length > 1) {
+            const alt = image.getAttribute('alt') || ''
+            const index = findConversationMarkdownIndex(conversation, src, alt)
+            if (index >= 0) {
+              event.preventDefault()
+              event.stopPropagation()
+              bridgeActivations += 1
+              const loader = bridgeImageLoader()
+              const items = conversation.map((entry) => previewItemFromEntry(entry, loader))
+              store.setPreview({ items, index, anchor: button })
+              return
+            }
+          }
+        }
         const collected = collectMarkdownItems(markdown, button)
         if (collected === null) return
         event.preventDefault()
         event.stopPropagation()
+        bridgeActivations += 1
         store.setPreview({ items: collected.items, index: collected.index, anchor: button })
       }
       window.addEventListener('click', onClick, true)
@@ -1556,6 +1823,13 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
+        clientCtx = ctx
+        try { clientSessions = ctx.get('sessions') } catch (error) { clientSessions = undefined }
+        try {
+          ctx.inject(['sessions'], (sessionCtx) => {
+            try { clientSessions = sessionCtx.get('sessions') } catch (error) { /* late binding */ }
+          })
+        } catch (error) { /* inject unavailable */ }
         try {
           ctx.effect(() => ctx.locale.register(NS, { zh: MESSAGES.zh, en: MESSAGES.en }), 'dsh-image-tools: dictionaries')
           translate = ctx.locale.bind(NS)
@@ -1574,11 +1848,33 @@ window.__ModuleLoader__.load({
           }
         }, 'dsh-image-tools: styles')
 
-        const diagnostics = { slots: {}, collectMessageImages }
+        const diagnostics = {
+          slots: {},
+          collectMessageImages,
+          collectConversationImages,
+          conversationImageKinds: () => {
+            const entries = Array.isArray(latestChatNodes) ? collectConversationImages(latestChatNodes) : []
+            const kinds = { attachment: 0, markdown: 0 }
+            for (const entry of entries) kinds[entry.kind] = (kinds[entry.kind] || 0) + 1
+            return { total: entries.length, ...kinds }
+          },
+          bridgeLoaderAvailable: () => bridgeImageLoader() !== undefined,
+          bridgeActivationCount: () => bridgeActivations,
+          sessionsServiceAvailable: () => Boolean(currentSessionsService() && typeof currentSessionsService().binding === 'function'),
+          indexSessionId: () => latestSessionId,
+          markdownIndexOf: (src, alt) => {
+            const conversation = Array.isArray(latestChatNodes) ? collectConversationImages(latestChatNodes) : []
+            return findConversationMarkdownIndex(conversation, src, alt || '')
+          },
+        }
         globalThis.__DSH_IMAGE_TOOLS__ = diagnostics
         ctx.effect(installMarkdownBridge, 'dsh-image-tools: markdown image bridge')
         ctx.effect(() => () => {
           store.reset()
+          for (const url of attachmentUrlCache.values()) {
+            try { URL.revokeObjectURL(url) } catch (error) { /* already revoked */ }
+          }
+          attachmentUrlCache.clear()
           if (globalThis.__DSH_IMAGE_TOOLS__ === diagnostics) delete globalThis.__DSH_IMAGE_TOOLS__
         }, 'dsh-image-tools: overlay state')
 
@@ -1591,6 +1887,16 @@ window.__ModuleLoader__.load({
         ctx.slots.inject('shell.overlay', () => {
           diagnostics.slots['shell.overlay'] = true
           return ctx.slots.register({ name: 'shell.overlay', id: OVERLAY_ID, order: 100 }, Overlay)
+        })
+        // Mirrors the conversation snapshot for the markdown bridge; renders
+        // nothing and only needs the session's standard props.
+        ctx.slots.inject('conversation.session.header.utilities', () => {
+          diagnostics.slots['conversation.session.header.utilities'] = true
+          return ctx.slots.register({
+            name: 'conversation.session.header.utilities',
+            id: 'image-tools-index',
+            order: -100,
+          }, ConversationImageIndexTap)
         })
       },
     }
