@@ -167,6 +167,7 @@ window.__ModuleLoader__.load({
 .dit-strip-thumb[aria-current="true"]{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-state-business-primary) 35%,transparent)}
 .dit-strip-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 .dit-strip-thumb .dit-spinner{width:12px;height:12px;margin:10px auto}
+.dit-strip-fail{display:block;margin:9px auto;width:14px;height:14px;line-height:14px;text-align:center;border-radius:50%;background:var(--dsw-alias-bg-base-secondary);color:var(--dsw-alias-text-tertiary);font-size:10px;font-weight:600}
 @media (max-width:760px){.dit-preview-strip{display:none}}
 .dit-preview-toolbar{flex:none;align-self:center;max-width:calc(100% - 32px);display:flex;align-items:center;gap:2px;height:48px;margin:10px 0 6px;padding:5px 7px;border-radius:14px;background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary);box-shadow:0 0 0 .5px rgba(0,0,0,.1),0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08);white-space:nowrap}
 .dit-tb-btn{display:flex;align-items:center;justify-content:center;gap:7px;height:36px;min-width:36px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer}
@@ -180,11 +181,11 @@ window.__ModuleLoader__.load({
 .dit-tb-btn.act:hover{background:var(--dsw-alias-state-business-primary)}
 .dit-tb-group{display:flex;align-items:center;gap:2px}
 .dit-tb-sep{width:1px;height:20px;margin:0 5px;background:var(--dsw-alias-border-l2);flex:none}
-.dit-tb-file{max-width:210px;padding:0 9px;display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0}
+.dit-tb-file{width:226px;flex:none;padding:0 12px;display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0}
 .dit-tb-file b{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dit-tb-file span{font-size:10px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dit-tb-pct{min-width:52px;font-variant-numeric:tabular-nums;font-size:12.5px}
-.dit-tb-page{min-width:52px;text-align:center;font-size:12px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.dit-tb-pct{width:56px;min-width:0;flex:none;font-variant-numeric:tabular-nums;font-size:12.5px}
+.dit-tb-page{width:76px;min-width:0;flex:none;text-align:center;font-size:12px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .dit-tb-kbd{font-size:10.5px;color:var(--dsw-alias-label-tertiary);border:.5px solid var(--dsw-alias-border-l2);border-radius:5px;padding:1px 5px;line-height:1.3}
 .dit-preview-hint{flex:none;align-self:center;margin:0 0 10px;font-size:11px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
 @media (max-width:900px){.dit-tb-file{display:none}.dit-preview-hint{display:none}}
@@ -567,7 +568,13 @@ window.__ModuleLoader__.load({
         if (destination === '') continue
         let url
         try { url = new URL(destination, document.baseURI).href } catch (error) { continue }
-        out.push({ url, name: alt, raw: destination })
+        // A relative/absolute local file path cannot be used as an <img> URL
+        // here; DSH resolves it to its file endpoint when rendering. Keep the
+        // entry but mark it unresolved so the open path can map it to the
+        // rendered <img> (or drop it when no rendered copy exists).
+        const resolved = /^(?:https?:|blob:|data:|dsh-app:)/i.test(destination)
+          || destination.startsWith('//')
+        out.push({ url, name: alt, raw: destination, resolved })
       }
       return out
     }
@@ -609,7 +616,7 @@ window.__ModuleLoader__.load({
         const key = 'markdown:' + ref.url
         if (seen.has(key)) return
         seen.add(key)
-        out.push({ kind: 'markdown', url: ref.url, name: ref.name || nameFromUrl(ref.url), raw: ref.raw || ref.url })
+        out.push({ kind: 'markdown', url: ref.url, name: ref.name || nameFromUrl(ref.url), raw: ref.raw || ref.url, resolved: ref.resolved === true })
       }
       for (const node of nodes) {
         if (!node || typeof node !== 'object') continue
@@ -659,7 +666,8 @@ window.__ModuleLoader__.load({
       try {
         const url = new URL(value, document.baseURI)
         if (url.pathname.endsWith('/api/file')) {
-          const path = url.searchParams.get('path') || ''
+          let path = url.searchParams.get('path') || ''
+          try { path = decodeURIComponent(path) } catch (error) { /* keep encoded */ }
           return (path.split(/[\\/]/).filter(Boolean).pop() || '').toLowerCase()
         }
         return decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '').toLowerCase()
@@ -670,7 +678,55 @@ window.__ModuleLoader__.load({
 
     function rawBasename(value) {
       if (typeof value !== 'string' || value === '') return ''
-      return value.split(/[\\/]/).filter(Boolean).pop().toLowerCase()
+      let decoded = value
+      try { decoded = decodeURIComponent(value) } catch (error) { /* keep encoded */ }
+      return decoded.split(/[\\/]/).filter(Boolean).pop().toLowerCase()
+    }
+
+    /**
+     * Collect the browser-resolved sources of rendered Markdown images. Relative
+     * file destinations in Markdown text are not loadable as-is; the shipped
+     * renderer resolves them to its file endpoint, so map raw names to the real
+     * `currentSrc` and use that when it is available.
+     */
+    function renderedMarkdownUrls() {
+      const byAlt = new Map()
+      const byBase = new Map()
+      for (const button of document.querySelectorAll('[class*="markdown"] button')) {
+        const image = button.querySelector('img')
+        if (!(image instanceof HTMLImageElement)) continue
+        const src = image.currentSrc || image.src
+        if (typeof src !== 'string' || src === '') continue
+        const alt = (image.getAttribute('alt') || '').trim().toLowerCase()
+        if (alt !== '') byAlt.set(alt, src)
+        const base = imageBasename(src)
+        if (base !== '') byBase.set(base, src)
+      }
+      return { byAlt, byBase }
+    }
+
+    /**
+     * Resolve or drop Markdown entries whose destination is a local file path.
+     * Rendered images are remapped to their real `src`; unrendered ones cannot
+     * be loaded by this plugin and are omitted instead of showing broken
+     * thumbnails/pages.
+     */
+    function resolveConversationEntries(entries) {
+      const rendered = renderedMarkdownUrls()
+      const out = []
+      for (const entry of entries) {
+        if (entry.kind !== 'markdown' || entry.resolved === true) {
+          out.push(entry)
+          continue
+        }
+        const base = rawBasename(entry.raw) || imageBasename(entry.url)
+        const alt = typeof entry.name === 'string' ? entry.name.trim().toLowerCase() : ''
+        const found = (base !== '' ? rendered.byBase.get(base) : undefined)
+          || (alt !== '' ? rendered.byAlt.get(alt) : undefined)
+        if (!found) continue
+        out.push({ ...entry, url: found, resolved: true })
+      }
+      return out
     }
 
     /**
@@ -969,6 +1025,7 @@ window.__ModuleLoader__.load({
         }
         return null
       })
+      const [failed, setFailed] = useState(false)
       useEffect(() => {
         if (src !== null) return undefined
         if (item.attachment === undefined || typeof item.load !== 'function') return undefined
@@ -992,7 +1049,11 @@ window.__ModuleLoader__.load({
           title: item.name || t('image.alt'),
           onClick: onSelect,
         },
-        src === null ? h('span', { className: 'dit-spinner' }) : h('img', { src, alt: '' }),
+        src === null
+          ? h('span', { className: 'dit-spinner' })
+          : failed
+            ? h('span', { className: 'dit-strip-fail', title: item.name || t('image.alt') }, '!')
+            : h('img', { src, alt: '', onError: () => setFailed(true) }),
       )
     }
 
@@ -1039,7 +1100,7 @@ window.__ModuleLoader__.load({
         // order. The clicked attachment id locates its page.
         if (clicked && clicked.attachment && Array.isArray(nodes)) {
           const identifier = clicked.attachment.attachmentId
-          const conversation = collectConversationImages(nodes)
+          const conversation = resolveConversationEntries(collectConversationImages(nodes))
           const found = conversation.findIndex((entry) => entry.kind === 'attachment'
             && entry.attachment.attachmentId === identifier)
           if (found >= 0 && conversation.length > 1) {
@@ -1609,7 +1670,7 @@ window.__ModuleLoader__.load({
         // Prefer the whole-conversation index: the same Markdown block plus
         // every image from other turns before and after it.
         if (Array.isArray(latestChatNodes)) {
-          const conversation = collectConversationImages(latestChatNodes)
+          const conversation = resolveConversationEntries(collectConversationImages(latestChatNodes))
           if (conversation.length > 1) {
             const alt = image.getAttribute('alt') || ''
             const index = findConversationMarkdownIndex(conversation, src, alt)
@@ -1853,7 +1914,9 @@ window.__ModuleLoader__.load({
           collectMessageImages,
           collectConversationImages,
           conversationImageKinds: () => {
-            const entries = Array.isArray(latestChatNodes) ? collectConversationImages(latestChatNodes) : []
+            const entries = Array.isArray(latestChatNodes)
+              ? resolveConversationEntries(collectConversationImages(latestChatNodes))
+              : []
             const kinds = { attachment: 0, markdown: 0 }
             for (const entry of entries) kinds[entry.kind] = (kinds[entry.kind] || 0) + 1
             return { total: entries.length, ...kinds }
@@ -1863,7 +1926,9 @@ window.__ModuleLoader__.load({
           sessionsServiceAvailable: () => Boolean(currentSessionsService() && typeof currentSessionsService().binding === 'function'),
           indexSessionId: () => latestSessionId,
           markdownIndexOf: (src, alt) => {
-            const conversation = Array.isArray(latestChatNodes) ? collectConversationImages(latestChatNodes) : []
+            const conversation = Array.isArray(latestChatNodes)
+              ? resolveConversationEntries(collectConversationImages(latestChatNodes))
+              : []
             return findConversationMarkdownIndex(conversation, src, alt || '')
           },
         }

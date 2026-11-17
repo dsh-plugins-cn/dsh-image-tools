@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.3
+
+- Keep the preview toolbar stable while paging: reserved fixed widths for the
+  page counter (76px), file name block (226px, ellipsized with full-name
+  tooltip) and zoom percentage (56px). Buttons no longer shift horizontally
+  when the file name or digit count changes.
+- Layout-only change; paging, zoom, pan, copy and download behavior unchanged.
+
+## 0.5.2
+
+- Fix broken trailing thumbnails/pages in conversations whose Markdown images
+  use relative file paths (for example `.artifacts/...`): the conversation
+  index was using the raw path as an image URL, producing 404s.
+- Rendered Markdown images are now remapped to the browser-resolved `src`
+  (`/api/file?...`) before building the preview index; unrendered relative-path
+  images are omitted instead of appearing as broken thumbnails/pages.
+- Failed thumbnails no longer render a broken-image icon (neutral placeholder).
+
 ## 0.5.1
 
 - Display metadata refresh only — no behavior change.

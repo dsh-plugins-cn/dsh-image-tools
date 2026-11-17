@@ -1,0 +1,397 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>Preview toolbar stability mockups</title>
+<style>
+  :root{
+    --bg:#0d0f13;
+    --panel:#171a20;
+    --toolbar:#1b1f27;
+    --toolbar-2:#20252e;
+    --border:#2c323d;
+    --border-soft:#242a33;
+    --text:#e7eaf0;
+    --muted:#8d95a3;
+    --muted-2:#6f7784;
+    --accent:#5b86ff;
+    --green:#55c98b;
+    --red:#ff6b6b;
+    --orange:#e0a458;
+    --purple:#a98bff;
+    --font:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);font-family:var(--font);color:var(--text)}
+  body[data-shot="current"] #current,
+  body[data-shot="option-a"] #option-a,
+  body[data-shot="option-b"] #option-b{display:block}
+  .shot{display:none;width:1280px;height:820px;position:relative;overflow:hidden;padding:38px 48px 0;
+    background:radial-gradient(900px 500px at 18% -10%,#1a2130 0%,#0d0f13 55%),radial-gradient(700px 400px at 95% 0%,#181c24 0%,transparent 60%)}
+  .kicker{font-size:11px;letter-spacing:.16em;color:var(--muted-2);text-transform:uppercase;margin-bottom:10px}
+  h1{font-size:25px;line-height:1.25;font-weight:650;margin:0 0 8px;letter-spacing:.01em}
+  .sub{font-size:13.5px;color:var(--muted);line-height:1.6;margin:0;max-width:900px}
+  .note{font-size:12.5px;color:var(--muted-2);margin-top:10px}
+  .rows{margin-top:34px;position:relative;width:100%}
+  .row{position:relative;margin-bottom:26px}
+  .row-tag{font-size:12px;color:var(--muted);margin:0 0 9px 6px;display:flex;align-items:center;gap:8px}
+  .row-tag b{font-weight:600;color:#c9cfda}
+  .row-tag .hint{font-size:10.5px;color:var(--muted-2);border:1px solid var(--border-soft);border-radius:999px;padding:2px 8px}
+  .toolbar{height:58px;width:1184px;border-radius:16px;border:1px solid var(--border);
+    background:linear-gradient(180deg,var(--toolbar-2),var(--toolbar));
+    box-shadow:0 18px 50px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.035);
+    display:flex;align-items:center;justify-content:center;gap:2px;padding:0 12px;position:relative}
+  .btn{display:flex;align-items:center;justify-content:center;gap:7px;height:36px;min-width:36px;padding:0 10px;
+    border-radius:10px;border:0;background:transparent;color:#d8dde6;font-family:inherit;font-size:12.5px;white-space:nowrap}
+  .btn.icon{width:36px;padding:0}
+  .btn.chev{font-size:20px;line-height:1;color:#aeb6c3;padding-bottom:2px}
+  .btn.pill{background:var(--accent);color:#fff;font-weight:600}
+  .btn.ghost{border:1px solid #353c49;background:#232934}
+  .page{width:76px;text-align:center;font-size:12px;color:#b4bcc9;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+  .file{height:40px;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 12px;overflow:hidden}
+  .file b{display:block;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file span{display:block;font-size:10px;color:#7d8696;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .file.fixed{width:226px;flex:none}
+  .file.auto{max-width:210px}
+  .pct{width:56px;text-align:center;font-size:12.5px;color:#d8dde6;font-variant-numeric:tabular-nums}
+  .sep{width:1px;height:20px;background:#303643;margin:0 5px;flex:none}
+  .tail{display:flex;align-items:center;gap:2px}
+  .kbd{font-size:10px;color:#8b93a1;border:.5px solid #3a4150;border-radius:4px;padding:1px 5px;margin-left:2px}
+  .guide{position:absolute;width:1px;border-left:1px dashed;pointer-events:none;opacity:.95}
+  .guide-tag{position:absolute;transform:translateY(-50%);font-size:10.5px;padding:3px 7px;border-radius:999px;
+    background:#161a21;border:1px solid #303643;white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:11.5px;color:var(--muted)}
+  .legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px}
+  .zones{position:absolute;top:-1px;bottom:-1px;border-radius:14px;pointer-events:none;opacity:.9}
+  .z-pager{background:rgba(91,134,255,.08);border:1px dashed rgba(91,134,255,.5)}
+  .z-file{background:rgba(224,164,88,.07);border:1px dashed rgba(224,164,88,.5)}
+  .z-zoom{background:rgba(85,201,139,.07);border:1px dashed rgba(85,201,139,.5)}
+  .z-act{background:rgba(169,139,255,.06);border:1px dashed rgba(169,139,255,.45)}
+  .zone-label{position:absolute;top:-24px;font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .stage{position:relative;width:1184px;height:392px;border-radius:18px;overflow:hidden;border:1px solid #2b3039;
+    background:linear-gradient(180deg,#1a1e26,#12151b);box-shadow:0 20px 60px rgba(0,0,0,.4);margin-top:26px}
+  .stage::before{content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(420px 220px at 26% 12%,rgba(91,134,255,.24),transparent 65%),
+      radial-gradient(360px 220px at 78% 26%,rgba(169,139,255,.16),transparent 65%),
+      linear-gradient(180deg,rgba(255,255,255,.035),transparent 40%)}
+  .mock-ui{position:absolute;left:38px;right:38px;top:34px;bottom:34px;border-radius:12px;border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(180deg,rgba(24,28,36,.9),rgba(17,20,26,.92));padding:20px 22px;display:grid;grid-template-rows:14px 1fr;gap:16px;opacity:.9}
+  .mock-line{height:10px;border-radius:6px;background:rgba(255,255,255,.11)}
+  .mock-line.short{width:36%}
+  .mock-chart{display:flex;align-items:flex-end;gap:18px;padding:10px 8px 6px;border-radius:10px;background:rgba(255,255,255,.025)}
+  .mock-bar{flex:1;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,rgba(91,134,255,.8),rgba(91,134,255,.25))}
+  .chip{position:absolute;left:18px;top:16px;display:flex;align-items:center;gap:10px;max-width:360px;
+    padding:9px 13px;border-radius:12px;background:rgba(12,15,20,.72);border:1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .chip .dot{width:22px;height:22px;border-radius:6px;background:rgba(91,134,255,.22);border:1px solid rgba(91,134,255,.5);flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:#9db6ff}
+  .chip .meta{min-width:0}
+  .chip b{display:block;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip span{display:block;font-size:10px;color:#8d95a3;white-space:nowrap}
+  .callout{position:absolute;font-size:10.5px;color:#aab3c2;background:#161a21;border:1px solid #303643;border-radius:8px;padding:6px 9px;white-space:nowrap}
+  .b-toolbar{margin-top:22px}
+  .chips-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .foot{margin-top:26px;padding-top:16px;border-top:1px solid #242a33;display:flex;gap:26px;font-size:11.5px;color:var(--muted);line-height:1.65}
+  .foot b{color:#c9cfda;font-weight:600}
+  .foot .item{flex:1;min-width:0}
+  .foot .bad{color:#ffb3b3} .foot .good{color:#a9e7c4}
+  .mini-chip{display:flex;align-items:center;gap:8px;max-width:360px;padding:7px 10px;border-radius:10px;background:#171b22;border:1px solid #2b313b;font-size:11px;color:#cfd5df}
+  .mini-chip b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .mini-chip span{color:#7d8696;flex:none}
+</style>
+</head>
+<body data-shot="">
+
+<!-- ============================================================ CURRENT -->
+<section class="shot" id="current">
+  <div class="kicker">现状 · Before</div>
+  <h1>工具栏随文件名伸缩，按钮横向漂移</h1>
+  <p class="sub">翻页到不同图片时，文件名和尺寸文字宽度不同，居中工具栏的右侧按钮被推着左右移动；页码、缩放百分比位数变化也会造成同类位移。</p>
+  <div class="rows">
+    <div class="row">
+      <div class="row-tag"><b>短文件名</b><span class="hint">方案 A.png</span></div>
+      <div class="toolbar" data-row="short">
+        <button class="btn icon chev">‹</button>
+        <span class="page">第 10 / 11 张</span>
+        <button class="btn icon chev">›</button>
+        <span class="sep"></span>
+        <div class="file auto" style="width:108px"><b>方案 A.png</b><span>1580 × 940 · 186 KB</span></div>
+        <span class="sep"></span>
+        <div class="tail">
+          <div class="btn icon ghost" style="padding:0">−</div>
+          <span class="pct">100%</span>
+          <button class="btn icon ghost" style="padding:0">+</button>
+          <span class="sep"></span>
+          <button class="btn ghost">适配</button>
+          <button class="btn">复制图片</button>
+          <button class="btn">下载原图</button>
+          <span class="sep"></span>
+          <button class="btn">关闭 <span class="kbd">Esc</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-tag"><b>中等文件名</b><span class="hint">页面效果.png</span></div>
+      <div class="toolbar" data-row="medium">
+        <button class="btn icon chev">‹</button>
+        <span class="page">第 10 / 11 张</span>
+        <button class="btn icon chev">›</button>
+        <span class="sep"></span>
+        <div class="file auto" style="width:158px"><b>页面效果.png</b><span>1280 × 820 · 245 KB</span></div>
+        <span class="sep"></span>
+        <div class="tail">
+          <div class="btn icon ghost" style="padding:0">−</div>
+          <span class="pct">100%</span>
+          <button class="btn icon ghost" style="padding:0">+</button>
+          <span class="sep"></span>
+          <button class="btn ghost">适配</button>
+          <button class="btn">复制图片</button>
+          <button class="btn">下载原图</button>
+          <span class="sep"></span>
+          <button class="btn">关闭 <span class="kbd">Esc</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-tag"><b>长文件名</b><span class="hint">frame-variants-2026-11-17-final.png</span></div>
+      <div class="toolbar" data-row="long">
+        <button class="btn icon chev">‹</button>
+        <span class="page">第 10 / 11 张</span>
+        <button class="btn icon chev">›</button>
+        <span class="sep"></span>
+        <div class="file auto" style="width:210px"><b>frame-variants-2026-11-17-final.png</b><span>1240 × 820 · 311 KB</span></div>
+        <span class="sep"></span>
+        <div class="tail">
+          <div class="btn icon ghost" style="padding:0">−</div>
+          <span class="pct">100%</span>
+          <button class="btn icon ghost" style="padding:0">+</button>
+          <span class="sep"></span>
+          <button class="btn ghost">适配</button>
+          <button class="btn">复制图片</button>
+          <button class="btn">下载原图</button>
+          <span class="sep"></span>
+          <button class="btn">关闭 <span class="kbd">Esc</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:2px">红色虚线：三种文件名下，右侧操作区起点。短名到长名已经相差 50px 以上，长文件名最多还能再大一个档位。</div>
+  <div class="foot">
+    <div class="item"><b class="bad">影响</b> 翻页时鼠标要追着按钮走；文件名从短到长最多约 50px 位移，页码/缩放位数变化还会叠加。</div>
+    <div class="item"><b>根因</b> 工具栏整体居中，文件名区域只有 max-width 而没有固定宽度，右侧按钮跟着内容宽度一起居中漂移。</div>
+  </div>
+</section>
+
+<!-- ============================================================ OPTION A -->
+<section class="shot" id="option-a">
+  <div class="kicker">方案 A · 推荐</div>
+  <h1>固定三段式：文件名占一个固定槽位</h1>
+  <p class="sub">工具栏保持现在的顺序，只把可变内容都装进固定宽度的槽：翻页数字、文件名（超长省略）、缩放百分比。翻页时按钮位置完全不动。</p>
+  <div class="rows" style="margin-top:30px">
+    <div class="row">
+      <div class="row-tag"><b>短文件名</b><span class="hint">方案 A.png</span></div>
+      <div class="toolbar" data-row="short">
+        <button class="btn icon chev">‹</button>
+        <span class="page">第 10 / 11 张</span>
+        <button class="btn icon chev">›</button>
+        <span class="sep"></span>
+        <div class="file fixed"><b>方案 A.png</b><span>1580 × 940 · 186 KB</span></div>
+        <span class="sep"></span>
+        <div class="tail">
+          <div class="btn icon ghost" style="padding:0">−</div>
+          <span class="pct">100%</span>
+          <button class="btn icon ghost" style="padding:0">+</button>
+          <span class="sep"></span>
+          <button class="btn ghost">适配</button>
+          <button class="btn">复制图片</button>
+          <button class="btn">下载原图</button>
+          <span class="sep"></span>
+          <button class="btn">关闭 <span class="kbd">Esc</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-tag"><b>中等文件名</b><span class="hint">页面效果.png</span></div>
+      <div class="toolbar" data-row="medium">
+        <button class="btn icon chev">‹</button>
+        <span class="page">第 10 / 11 张</span>
+        <button class="btn icon chev">›</button>
+        <span class="sep"></span>
+        <div class="file fixed"><b>页面效果.png</b><span>1280 × 820 · 245 KB</span></div>
+        <span class="sep"></span>
+        <div class="tail">
+          <div class="btn icon ghost" style="padding:0">−</div>
+          <span class="pct">100%</span>
+          <button class="btn icon ghost" style="padding:0">+</button>
+          <span class="sep"></span>
+          <button class="btn ghost">适配</button>
+          <button class="btn">复制图片</button>
+          <button class="btn">下载原图</button>
+          <span class="sep"></span>
+          <button class="btn">关闭 <span class="kbd">Esc</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-tag"><b>长文件名</b><span class="hint">frame-variants-2026-11-17-final.png → 省略显示</span></div>
+      <div class="toolbar" data-row="long">
+        <button class="btn icon chev">‹</button>
+        <span class="page">第 10 / 11 张</span>
+        <button class="btn icon chev">›</button>
+        <span class="sep"></span>
+        <div class="file fixed"><b>frame-variants-2026-11-17-fin….png</b><span>1240 × 820 · 311 KB</span></div>
+        <span class="sep"></span>
+        <div class="tail">
+          <div class="btn icon ghost" style="padding:0">−</div>
+          <span class="pct">100%</span>
+          <button class="btn icon ghost" style="padding:0">+</button>
+          <span class="sep"></span>
+          <button class="btn ghost">适配</button>
+          <button class="btn">复制图片</button>
+          <button class="btn">下载原图</button>
+          <span class="sep"></span>
+          <button class="btn">关闭 <span class="kbd">Esc</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--accent)"></i>翻页组固定宽（兼容三位数页码）</span>
+    <span><i style="background:var(--orange)"></i>文件名固定 226px，超长省略 + hover 显示全名</span>
+    <span><i style="background:var(--green)"></i>缩放区固定宽</span>
+    <span><i style="background:var(--purple)"></i>操作区固定</span>
+  </div>
+  <div class="note">绿色虚线：三个文件名下，操作区起点完全重合。窄窗口（&lt; 900px）仍按现有规则隐藏文件名。</div>
+  <div class="foot">
+    <div class="item"><b class="good">推荐理由</b> 只动工具栏样式和槽位宽度，不改翻页/缩放逻辑；文件名仍和图片信息挨在一起，信息不丢。</div>
+    <div class="item"><b>改动范围</b> 页码固定 76px；文件名固定 226px（超长省略 + hover 显示全名）；缩放百分比固定 56px；窄屏 &lt;900px 继续隐藏文件名。</div>
+  </div>
+</section>
+
+<!-- ============================================================ OPTION B -->
+<section class="shot" id="option-b">
+  <div class="kicker">方案 B · 备选</div>
+  <h1>文件名移到图片左上角，工具栏只留控制</h1>
+  <p class="sub">工具栏彻底不显示文件名：左下角保留翻页、缩放和操作，文件名作为浮层叠在图片左上角，超长省略。工具栏不再受任何文件名影响。</p>
+  <div class="stage">
+    <div class="mock-ui">
+      <div class="mock-line short"></div>
+      <div class="mock-chart">
+        <div class="mock-bar" style="height:72%"></div>
+        <div class="mock-bar" style="height:46%"></div>
+        <div class="mock-bar" style="height:88%;background:linear-gradient(180deg,rgba(169,139,255,.75),rgba(169,139,255,.2))"></div>
+        <div class="mock-bar" style="height:58%"></div>
+        <div class="mock-bar" style="height:36%"></div>
+      </div>
+    </div>
+    <div class="chip">
+      <span class="dot">▧</span>
+      <span class="meta">
+        <b>frame-variants-2026-11-17-final-v2-方案A页面效果-最终版-请勿删除.png</b>
+        <span>1240 × 820 · 311 KB</span>
+      </span>
+    </div>
+    <div class="callout" style="right:18px;top:16px">文件名浮层：最大 360px，超长省略；点按/悬停显示全名</div>
+  </div>
+  <div class="toolbar b-toolbar">
+    <button class="btn icon chev">‹</button>
+    <span class="page">第 10 / 11 张</span>
+    <button class="btn icon chev">›</button>
+    <span class="sep"></span>
+    <div class="tail">
+      <div class="btn icon ghost" style="padding:0">−</div>
+      <span class="pct">100%</span>
+      <button class="btn icon ghost" style="padding:0">+</button>
+      <span class="sep"></span>
+      <button class="btn ghost">适配</button>
+      <button class="btn">复制图片</button>
+      <button class="btn">下载原图</button>
+      <span class="sep"></span>
+      <button class="btn">关闭 <span class="kbd">Esc</span></button>
+    </div>
+  </div>
+  <div class="chips-row">
+    <div class="mini-chip"><span>短名</span><b>方案 A.png</b><span>1580 × 940</span></div>
+    <div class="mini-chip" style="max-width:520px"><span>长名</span><b>frame-variants-2026-11-17-final-v2-方案A页面效果-最终版-请勿删除.png</b><span>1240 × 820</span></div>
+  </div>
+  <div class="note">可选：浮层 2.5 秒后淡出，鼠标移动/切换图片时再出现；适合希望工具栏最简的情况。代价是文件名会盖住图片左上角一小块。</div>
+  <div class="foot">
+    <div class="item"><b>优点</b> 工具栏最简，文件名空间更大，以后再加按钮也不会挤；跟很多图片查看器的左上角文件名习惯一致。</div>
+    <div class="item"><b>代价</b> 浮层会盖住图片左上角；要新增浮层 UI、省略与可选自动隐藏逻辑，改动比方案 A 大。</div>
+  </div>
+</section>
+
+<script>
+  function drawGuides(){
+    const target = document.querySelector('.shot[data-active]');
+    if (!target || target.id === 'option-b') return;
+    const sr = target.getBoundingClientRect();
+    const rows = [...target.querySelectorAll('.toolbar')];
+    let firstLeft = null;
+    rows.forEach((toolbar, index) => {
+      const tail = toolbar.querySelector('.tail');
+      if (!tail) return;
+      const tr = tail.getBoundingClientRect();
+      const rr = toolbar.getBoundingClientRect();
+      const color = target.id === 'current' ? 'rgba(255,107,107,.9)' : 'rgba(85,201,139,.9)';
+      const line = document.createElement('div');
+      line.className = 'guide';
+      line.style.left = (tr.left - sr.left) + 'px';
+      line.style.top = (rr.top - sr.top - 4) + 'px';
+      line.style.height = (rr.height + 8) + 'px';
+      line.style.borderColor = color;
+      target.appendChild(line);
+      if (target.id === 'current') {
+        if (firstLeft === null) firstLeft = tr.left;
+        const offset = Math.round(tr.left - firstLeft);
+        const tag = document.createElement('span');
+        tag.className = 'guide-tag';
+        tag.style.color = '#ffb3b3';
+        tag.style.left = (tr.left - sr.left + 6) + 'px';
+        tag.style.top = (rr.bottom - sr.top + 7) + 'px';
+        tag.textContent = offset === 0 ? '基准位置（短名）' : `按钮起点 +${offset}px`;
+        target.appendChild(tag);
+      }
+    });
+    // zone labels on option A first toolbar
+    if (target.id === 'option-a') {
+      const toolbar = target.querySelector('.toolbar');
+      const tr = toolbar.getBoundingClientRect();
+      const groups = [
+        ['.page', 'z-pager', '翻页固定宽'],
+        ['.file', 'z-file', '文件名固定 226px'],
+        ['.tail .pct', 'z-zoom', '缩放固定宽'],
+      ];
+      for (const [selector, cls, label] of groups) {
+        const node = toolbar.querySelector(selector);
+        if (!node) continue;
+        const nr = node.getBoundingClientRect();
+        const zone = document.createElement('div');
+        zone.className = 'zones ' + cls;
+        zone.style.left = (nr.left - tr.left - 6) + 'px';
+        zone.style.top = '-1px';
+        zone.style.width = (nr.width + 12) + 'px';
+        toolbar.appendChild(zone);
+        const tag = document.createElement('span');
+        tag.className = 'zone-label';
+        tag.style.left = (nr.left - tr.left - 6) + 'px';
+        tag.style.top = '-22px';
+        tag.textContent = label;
+        toolbar.appendChild(tag);
+      }
+    }
+  }
+  // mark the visible shot, then draw
+  const requested = (location.hash || '#current').slice(1);
+  document.body.dataset.shot = ['current','option-a','option-b'].includes(requested) ? requested : 'current';
+  const visible = document.body.dataset.shot;
+  const active = document.getElementById(visible);
+  if (active) active.setAttribute('data-active','true');
+  drawGuides();
+</script>
+</body>
+</html>
+
+
+
