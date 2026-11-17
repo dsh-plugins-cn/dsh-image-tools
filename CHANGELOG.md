@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1
+
+- Display metadata refresh only — no behavior change.
+- Plugin title is now **图片预览工具 / Image Preview Tools** (was 图片复制与下载 /
+  Image Tools), covering preview, zoom, pan, conversation-wide paging and
+  copy/download instead of only copy/download.
+- Locale descriptions, `package.json` description/keywords and the README
+  opening now describe the full feature set.
+- `client.js` is byte-identical to 0.5.0; only metadata files changed.
+
 ## 0.5.0
 
 - **Paging now spans the whole conversation, across turns.** A session-wide

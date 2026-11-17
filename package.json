@@ -1,14 +1,19 @@
 {
   "name": "dsh-image-tools",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": false,
   "type": "module",
-  "description": "Copy or download any image shown in a DeepSeek Harness conversation, including pasted screenshots, without losing the original bytes.",
+  "description": "A complete viewer for conversation images in DeepSeek Harness: wheel/pinch zoom, drag-to-pan, conversation-wide paging, plus copy and original-byte download from hover or right-click. Markdown-embedded images included.",
   "keywords": [
     "dsh",
     "dsh-plugin",
     "deepseek-harness",
     "image",
+    "preview",
+    "zoom",
+    "gallery",
+    "pagination",
+    "markdown",
     "screenshot",
     "clipboard",
     "download"
